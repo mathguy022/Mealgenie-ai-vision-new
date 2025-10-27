@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot } from 'lucide-react';
+import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import WeeklyMeasurements from '@/components/WeeklyMeasurements';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -218,15 +218,18 @@ const Dashboard = () => {
              </CardContent>
            </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-smooth border-secondary/20 hover:border-secondary">
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-smooth border-amber-500/30 hover:border-amber-500"
+            onClick={() => navigate('/smart-meal-genie')}
+          >
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl gradient-secondary flex items-center justify-center">
-                  <Apple className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-500 flex items-center justify-center">
+                  <Wand2 className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">Meal Plans</h3>
-                  <p className="text-sm text-muted-foreground">AI-generated plans</p>
+                  <h3 className="font-bold text-lg">🪄 AI Smart Meal Genie</h3>
+                  <p className="text-sm text-muted-foreground">Dynamic meal plans that learn your goals and adapt daily.</p>
                 </div>
               </div>
             </CardContent>

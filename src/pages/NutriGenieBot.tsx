@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Bot, Loader2, Mic, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, Mic, Send, Trash2, Sparkles } from 'lucide-react';
 import { openRouterClient } from '@/integrations/openrouter/openrouter-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +78,16 @@ export default function NutriGenieBot() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const examplePrompts = useMemo(
+    () => [
+      'How many calories in 100g cooked quinoa? Include macros.',
+      'High-protein vegetarian breakfast ideas under 400 kcal.',
+      'Estimate calories: 2 slices pepperoni pizza and a can of Coke.',
+      'Plan a 1800 kcal Mediterranean day with macro targets.'
+    ],
+    []
+  );
+
   // Load profile lightly (no PII is stored in chat history)
   useEffect(() => {
     let mounted = true;
@@ -126,8 +136,8 @@ export default function NutriGenieBot() {
     saveHistory([seed]);
   };
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
     setInput('');
 
@@ -201,6 +211,12 @@ export default function NutriGenieBot() {
     }
   };
 
+  const handlePromptClick = (text: string) => {
+    if (loading) return;
+    // Immediately send the suggested prompt
+    void sendMessage(text);
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -246,6 +262,26 @@ export default function NutriGenieBot() {
             <CardDescription>Ask about foods, calories, portions, diets, and healthy meal ideas.</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Tips strip with example prompts */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <span>Try one of these</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {examplePrompts.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => handlePromptClick(p)}
+                    className="text-xs rounded-full px-3 py-1 border bg-emerald-500/10 border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300 transition-colors"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div ref={scrollRef} className="h-[65vh] md:h-[70vh] overflow-y-auto pr-2 space-y-4">
               {messages.map(m => (
                 <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
