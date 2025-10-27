@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan } from 'lucide-react';
+import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import WeeklyMeasurements from '@/components/WeeklyMeasurements';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -227,6 +227,27 @@ const Dashboard = () => {
                 <div>
                   <h3 className="font-bold text-lg">Meal Plans</h3>
                   <p className="text-sm text-muted-foreground">AI-generated plans</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* NutriGenie Bot */}
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-smooth border-emerald-500/20 hover:border-emerald-500"
+            onClick={() => navigate('/nutrigenie')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                  <Bot className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-2">
+                    <h3 className="font-bold text-lg">NutriGenie Bot</h3>
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">NEW</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Chat with your AI nutrition coach</p>
                 </div>
               </div>
             </CardContent>

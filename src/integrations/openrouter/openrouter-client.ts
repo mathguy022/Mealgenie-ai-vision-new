@@ -20,6 +20,42 @@ export class OpenRouterClient {
     this.initialize();
   }
 
+  // Chat with multi-turn messages
+  async chat(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: { model?: string }
+  ): Promise<string> {
+    this.checkInitialization();
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'MealGenie AI'
+        },
+        body: JSON.stringify({
+          model: options?.model || 'openai/gpt-4o',
+          messages
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new OpenRouterError(errorData.error?.message || `API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || '';
+    } catch (error: unknown) {
+      console.error('Error during OpenRouter chat:', error);
+      const message = error instanceof Error ? error.message : 'Failed to complete chat request';
+      throw new OpenRouterError(message);
+    }
+  }
+
   // Initialize the client with API key
   private initialize() {
     if (!API_KEY) {

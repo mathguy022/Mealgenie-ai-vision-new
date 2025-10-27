@@ -18,6 +18,7 @@ import BarcodeResult from "./pages/BarcodeResult";
 import NotFound from "./pages/NotFound";
 import Layout from "@/components/Layout";
 import { GeminiTest } from "@/components/GeminiTest";
+import NutriGenieBot from "./pages/NutriGenieBot";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/scan-live" element={<ProtectedRoute><FoodScannerLive /></ProtectedRoute>} />
                 <Route path="/gemini-test" element={<ProtectedRoute><GeminiTest /></ProtectedRoute>} />
                 <Route path="/enhanced-food-analyzer" element={<ProtectedRoute><EnhancedFoodAnalyzer /></ProtectedRoute>} />
+                <Route path="/nutrigenie" element={<ProtectedRoute><NutriGenieBot /></ProtectedRoute>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
