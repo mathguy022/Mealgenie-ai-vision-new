@@ -13,6 +13,8 @@ import FoodAnalyzer from "./pages/FoodAnalyzer";
 import FoodPreview from "./pages/FoodPreview";
 import FoodScannerLive from "./pages/FoodScannerLive";
 import EnhancedFoodAnalyzer from "./pages/EnhancedFoodAnalyzer";
+import BarcodeScanner from "./pages/BarcodeScanner";
+import BarcodeResult from "./pages/BarcodeResult";
 import NotFound from "./pages/NotFound";
 import Layout from "@/components/Layout";
 import { GeminiTest } from "@/components/GeminiTest";
@@ -49,6 +51,8 @@ const App = () => (
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/scan" element={<ProtectedRoute><FoodAnalyzer /></ProtectedRoute>} />
                 <Route path="/food-analyzer" element={<ProtectedRoute><FoodAnalyzer /></ProtectedRoute>} />
+                <Route path="/barcode-scanner" element={<ProtectedRoute><BarcodeScanner /></ProtectedRoute>} />
+                <Route path="/barcode-result/:barcode" element={<ProtectedRoute><BarcodeResult /></ProtectedRoute>} />
                 <Route path="/food-preview" element={<ProtectedRoute><FoodPreview /></ProtectedRoute>} />
                 <Route path="/scan-live" element={<ProtectedRoute><FoodScannerLive /></ProtectedRoute>} />
                 <Route path="/gemini-test" element={<ProtectedRoute><GeminiTest /></ProtectedRoute>} />
