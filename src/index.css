@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Claude-inspired minimal palette — exact hex references:
+       primary violet: #6D28D9
+       secondary lavender: #E6E6FA
+       coral highlight: #FF7F50
+       dark surface: #0B0F1A
+       high-contrast text: #F8FAFC
+    */
+
+    /* Light mode colors */
+    --background: 260 100% 97%;      /* Light purple background */
+    --foreground: 224 71% 4%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+
+    /* Primary: Violet for CTAs */
+    --primary: 263 70% 50%;          /* #6D28D9 */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
+    --primary-light: 263 70% 60%;    /* lighter violet */
+    --primary-dark: 263 70% 40%;     /* deeper violet */
+
+    /* Secondary: Lavender for UI surfaces */
+    --secondary: 240 66% 94%;        /* #E6E6FA */
+    --secondary-foreground: 224 41% 7%; /* #0B0F1A */
+    
+    /* Accent: Coral ONLY for highlights */
+    --accent: 16 100% 66%;           /* #FF7F50 */
+    --accent-foreground: 224 41% 7%; /* #0B0F1A */
+
+    /* Muted neutrals */
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    
+    /* Status */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* UI tokens */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 263 70% 50%; /* match primary */
+
+    --radius: 1rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(263, 70%, 50%), hsl(263, 70%, 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(240, 66%, 94%), hsl(240, 50%, 85%));
+    --gradient-hero: linear-gradient(135deg, hsl(263, 70%, 50%) 0%, hsl(240, 66%, 94%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.08);
+    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.12);
+    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.16);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    /* Dark mode colors */
+    --background: 224 41% 7%;        /* #0B0F1A */
+    --foreground: 210 40% 98%;       /* #F8FAFC */
+
+    --card: 224 35% 9%;              /* near #0F172A */
+    --card-foreground: 210 40% 98%;  /* #F8FAFC */
+
+    --popover: 224 35% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary remains the same */
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 263 70% 60%;
+    --primary-dark: 263 70% 40%;
+
+    /* Secondary: Darker in dark mode */
+    --secondary: 240 30% 20%;
+    --secondary-foreground: 210 40% 98%;
+    
+    /* Accent remains the same */
+    --accent: 16 100% 66%;
+    --accent-foreground: 224 41% 7%;
+
+    /* Muted neutrals for dark mode */
+    --muted: 224 20% 16%;
+    --muted-foreground: 215 20% 70%;
+
+    /* Status */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* UI tokens */
+    --border: 224 20% 18%;
+    --input: 224 20% 18%;
+    --ring: 263 70% 50%; /* match primary */
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(263, 70%, 50%), hsl(263, 70%, 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(240, 30%, 20%), hsl(240, 30%, 30%));
+    --gradient-hero: linear-gradient(135deg, hsl(263, 70%, 50%) 0%, hsl(240, 30%, 20%) 100%);
+    
+    /* Shadows tuned for dark surfaces */
+    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.25);
+    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.35);
+    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.45);
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary to-primary-light;
+  }
+  
+  .gradient-hero {
+    @apply bg-gradient-to-br from-primary to-secondary;
+  }
+  
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+}
