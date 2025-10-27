@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { Camera, TrendingUp, Apple, LogOut, User, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import WeeklyMeasurements from '@/components/WeeklyMeasurements';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -293,13 +294,18 @@ const Dashboard = () => {
         </section>
 
         {/* Goals Summary */}
-        <section>
+        <section className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Your Health Goal</CardTitle>
-              <CardDescription className="capitalize">
-                {profile.health_goal?.replace('_', ' ')} • {profile.activity_level?.replace('_', ' ')}
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>Your Health Goal</CardTitle>
+                <CardDescription className="capitalize">
+                  {profile.health_goal?.replace('_', ' ')} • {profile.activity_level?.replace('_', ' ')}
+                </CardDescription>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/onboarding')}>
+                Update Goals
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-3 gap-4 text-center">
@@ -320,6 +326,9 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Weekly Measurements */}
+          <WeeklyMeasurements />
         </section>
       </main>
     </div>

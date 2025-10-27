@@ -27,6 +27,8 @@ const FoodAnalyzer = () => {
   const [scanning, setScanning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysis | string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const supportsGetUserMedia = typeof navigator !== 'undefined' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const isSecure = typeof window !== 'undefined' ? window.isSecureContext : false;
   
   // Get tab from URL query parameter
   const queryParams = new URLSearchParams(location.search);
@@ -48,17 +50,13 @@ const FoodAnalyzer = () => {
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
       });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-        };
-        setStream(mediaStream);
-        setCameraActive(true);
-      }
+
+      // Store stream and show camera UI immediately; video element will mount next render
+      setStream(mediaStream);
+      setCameraActive(true);
     } catch (err) {
       console.error('Error accessing camera:', err);
       toast({
@@ -66,6 +64,10 @@ const FoodAnalyzer = () => {
         description: 'Please allow camera access to analyze food.',
         variant: 'destructive',
       });
+      // Fallback to file picker when camera cannot start (e.g., insecure origin on mobile)
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
     }
   };
 
@@ -74,8 +76,28 @@ const FoodAnalyzer = () => {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
+    if (videoRef.current) {
+      // detach stream to release camera in some browsers
+      // @ts-ignore - srcObject is not in TS lib for HTMLVideoElement in older DOM versions
+      videoRef.current.srcObject = null;
+    }
     setCameraActive(false);
     setScanning(false);
+  };
+
+  const handleStartCapture = () => {
+    // Prefer getUserMedia when available in a secure context; otherwise fallback to file input
+    if (supportsGetUserMedia && isSecure) {
+      void startCamera();
+    } else {
+      if (!isSecure) {
+        toast({
+          title: 'Using device camera picker',
+          description: 'Your connection is not secure; opening camera via upload.',
+        });
+      }
+      fileInputRef.current?.click();
+    }
   };
 
   const captureImage = async (): Promise<{blob: Blob, dataUrl: string}> => {
@@ -252,6 +274,27 @@ const FoodAnalyzer = () => {
       }
     };
   }, [stream]);
+
+  // Attach stream to video element once both are ready
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      try {
+        // @ts-ignore assign MediaStream to srcObject
+        videoRef.current.srcObject = stream;
+        const play = () => {
+          videoRef.current?.play().catch(() => {/* ignore autoplay errors */});
+        };
+        if ('onloadedmetadata' in videoRef.current) {
+          videoRef.current.onloadedmetadata = play;
+        } else {
+          // Fallback
+          setTimeout(play, 0);
+        }
+      } catch (e) {
+        console.warn('Failed to attach stream to video element', e);
+      }
+    }
+  }, [stream]);
   
   // Initialize calorie calculator hook
   const { calculateCalories } = useCalorieCalculator();
@@ -265,6 +308,7 @@ const FoodAnalyzer = () => {
       <input 
         type="file" 
         accept="image/*" 
+        capture="environment"
         ref={fileInputRef} 
         style={{ display: 'none' }} 
         onChange={handleFileUpload} 
@@ -344,7 +388,7 @@ const FoodAnalyzer = () => {
                   <Button 
                     className="flex-1 gradient-primary text-white"
                     size="lg"
-                    onClick={startCamera}
+                    onClick={handleStartCapture}
                   >
                     <Camera className="w-5 h-5 mr-2" />
                     Take a Photo
