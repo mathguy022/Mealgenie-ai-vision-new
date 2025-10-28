@@ -26,7 +26,7 @@ export function useCalorieCalculator(userId?: string) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, age, gender, height_cm, current_weight_kg, activity_level, health_goal')
+        .select('id, age, gender, height_cm, current_weight_kg, activity_level, health_goal, dietary_restrictions')
         .eq('id', id)
         .single();
       
@@ -42,6 +42,7 @@ export function useCalorieCalculator(userId?: string) {
           weight: (typeof data.current_weight_kg === 'number' ? data.current_weight_kg : Number(data.current_weight_kg)) || 70,
           activityLevel: (data.activity_level as ActivityLevel) || ActivityLevel.MODERATELY_ACTIVE,
           goal: (data.health_goal as NutritionGoal) || NutritionGoal.MAINTENANCE,
+          dietaryRestrictions: Array.isArray(data.dietary_restrictions) ? data.dietary_restrictions : [],
         };
         
         setProfile(profile);

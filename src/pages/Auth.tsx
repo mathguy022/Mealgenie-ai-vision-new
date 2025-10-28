@@ -21,6 +21,7 @@ const signUpSchema = z.object({
   gender: z.string().min(1, 'Gender is required'),
   activityLevel: z.string().min(1, 'Activity level is required'),
   goal: z.string().min(1, 'Goal is required'),
+  dietaryPreference: z.string().optional(),
 });
 
 const signInSchema = z.object({
@@ -44,6 +45,7 @@ const Auth = () => {
     gender: '',
     activityLevel: '',
     goal: '',
+    dietaryPreference: '',
   });
   
   const [signInData, setSignInData] = useState({
@@ -69,7 +71,8 @@ const Auth = () => {
           weight: validated.weight,
           gender: validated.gender,
           activityLevel: validated.activityLevel,
-          goal: validated.goal
+          goal: validated.goal,
+          dietaryPreference: validated.dietaryPreference ?? 'no_preference'
         }
       );
 
@@ -291,6 +294,31 @@ const Auth = () => {
                         <SelectItem value="build_muscle">Build Muscle</SelectItem>
                         <SelectItem value="gain_weight">Gain Weight</SelectItem>
                         <SelectItem value="live_healthy">Live Healthy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Dietary Preference dropdown */}
+                  <div className="space-y-2 mt-3">
+                    <Label htmlFor="dietaryPreference">Dietary Preference</Label>
+                    <Select 
+                      value={signUpData.dietaryPreference}
+                      onValueChange={(value) => setSignUpData({ ...signUpData, dietaryPreference: value })}
+                    >
+                      <SelectTrigger id="dietaryPreference">
+                        <SelectValue placeholder="Select your diet type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vegan">Vegan</SelectItem>
+                        <SelectItem value="vegetarian">Vegetarian</SelectItem>
+                        <SelectItem value="keto">Keto</SelectItem>
+                        <SelectItem value="paleo">Paleo</SelectItem>
+                        <SelectItem value="carnivore">Carnivore</SelectItem>
+                        <SelectItem value="pescatarian">Pescatarian</SelectItem>
+                        <SelectItem value="low_carb">Low-Carb</SelectItem>
+                        <SelectItem value="mediterranean">Mediterranean</SelectItem>
+                        <SelectItem value="gluten_free">Gluten-Free</SelectItem>
+                        <SelectItem value="no_preference">No Preference</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

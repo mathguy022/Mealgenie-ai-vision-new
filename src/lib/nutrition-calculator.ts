@@ -74,11 +74,19 @@ export function calculateGoalCalories(tdee: number, goal: NutritionGoal): number
  * @param goal User nutrition goal
  * @returns Macro breakdown with grams, calories and percentages
  */
-export function calculateMacroBreakdown(goalCalories: number, goal: NutritionGoal) {
+export function calculateMacroBreakdown(goalCalories: number, goal: NutritionGoal, dietaryRestrictions?: string[]) {
   let proteinPercentage = 0;
   let fatPercentage = 0;
   let carbsPercentage = 0;
   
+  // Dietary overrides (e.g., keto)
+  const isKeto = Array.isArray(dietaryRestrictions) && dietaryRestrictions.includes('keto');
+  if (isKeto) {
+    // Typical keto macro ratios
+    proteinPercentage = 0.20; // 20% protein
+    fatPercentage = 0.75;     // 75% fat
+    carbsPercentage = 0.05;   // 5% carbs
+  } else {
   // Adjust macro ratios based on goal
   switch (goal) {
     case NutritionGoal.WEIGHT_LOSS:
@@ -101,6 +109,7 @@ export function calculateMacroBreakdown(goalCalories: number, goal: NutritionGoa
       fatPercentage = 0.25;     // 25% fat
       carbsPercentage = 0.40;   // 40% carbs
       break;
+  }
   }
   
   // Calculate calories for each macro
@@ -153,10 +162,13 @@ export function generateExplanation(profile: UserNutritionProfile, result: Calor
     [NutritionGoal.WEIGHT_GAIN]: 'weight gain',
     [NutritionGoal.MUSCLE_BUILDING]: 'muscle building'
   };
+  const dietText = (profile.dietaryRestrictions && profile.dietaryRestrictions.length)
+    ? `\n\nDietary preference: ${profile.dietaryRestrictions.join(', ')}. ${profile.dietaryRestrictions.includes('keto') ? 'Macros adjusted for keto (very low carbs).' : ''}`
+    : '';
   
   return `Based on your profile as a ${age}-year-old ${gender} weighing ${weight}kg at ${height}cm tall with a ${activityText[activityLevel]} lifestyle, your Basal Metabolic Rate (BMR) is ${bmr} calories per day. This is the energy your body needs at complete rest.
 
-With your activity level, your Total Daily Energy Expenditure (TDEE) is ${tdee} calories per day. For your goal of ${goalText[goal]}, your daily calorie target is ${goalCalories} calories.
+With your activity level, your Total Daily Energy Expenditure (TDEE) is ${tdee} calories per day. For your goal of ${goalText[goal]}, your daily calorie target is ${goalCalories} calories.${dietText}
 
 For optimal results, aim for:
 • ${macroBreakdown.protein.grams}g of protein (${macroBreakdown.protein.percentage}% of calories)
@@ -180,7 +192,7 @@ export function calculateNutrition(profile: UserNutritionProfile): CalorieCalcul
   const goalCalories = calculateGoalCalories(tdee, profile.goal);
   
   // Calculate macro breakdown
-  const macroBreakdown = calculateMacroBreakdown(goalCalories, profile.goal);
+  const macroBreakdown = calculateMacroBreakdown(goalCalories, profile.goal, profile.dietaryRestrictions);
   
   // Generate explanation
   const result = {

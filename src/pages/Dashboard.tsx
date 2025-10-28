@@ -166,7 +166,7 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Quick Actions */}
-        <section className="grid md:grid-cols-4 gap-4">
+        <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
           <Card 
             className="cursor-pointer hover:shadow-lg transition-smooth border-primary/20 hover:border-primary"
             onClick={() => navigate('/scan')}
@@ -256,33 +256,49 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Barcode Scanner (centered on a new row) */}
-          <div className="md:col-span-4 flex justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Card
-                  className="relative cursor-pointer hover:shadow-lg transition-smooth border-sky-500/20 hover:border-sky-500"
-                  onClick={() => navigate('/barcode-scanner')}
-                >
-                  <span className="absolute right-3 top-3">
-                    <Badge className="bg-sky-500/20 text-sky-400 border-sky-500/30">NEW</Badge>
-                  </span>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center">
-                        <Scan className="w-8 h-8 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">Barcode Scanner</h3>
-                        <p className="text-sm text-muted-foreground">Scan food packaging for instant nutrition info.</p>
-                      </div>
+          {/* Barcode Scanner */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card
+                className="relative cursor-pointer hover:shadow-lg transition-smooth border-sky-500/20 hover:border-sky-500"
+                onClick={() => navigate('/barcode-scanner')}
+              >
+                <span className="absolute right-3 top-3">
+                  <Badge className="bg-sky-500/20 text-sky-400 border-sky-500/30">NEW</Badge>
+                </span>
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center">
+                      <Scan className="w-8 h-8 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
-              </TooltipTrigger>
-              <TooltipContent>Scan any packaged food barcode.</TooltipContent>
-            </Tooltip>
-          </div>
+                    <div>
+                      <h3 className="font-bold text-lg">Barcode Scanner</h3>
+                      <p className="text-sm text-muted-foreground">Scan food packaging for instant nutrition info.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>Scan any packaged food barcode.</TooltipContent>
+          </Tooltip>
+
+          {/* BMI Calculator */}
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-smooth border-indigo-500/20 hover:border-indigo-500"
+            onClick={() => navigate('/bmi-calculator')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
+                  <TrendingUp className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">BMI Calculator</h3>
+                  <p className="text-sm text-muted-foreground">Calculate your Body Mass Index</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Today's Progress */}

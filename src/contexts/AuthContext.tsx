@@ -10,6 +10,7 @@ interface ProfileData {
   gender?: string;
   activityLevel?: string;
   goal?: string;
+  dietaryPreference?: string;
 }
 
 interface AuthContextType {
@@ -58,6 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          dietary_preference: profileData?.dietaryPreference ?? 'no_preference',
         },
       },
     });
@@ -77,6 +79,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (profileData?.gender) insertData.gender = profileData.gender;
       if (profileData?.activityLevel) insertData.activity_level = profileData.activityLevel;
       if (profileData?.goal) insertData.health_goal = profileData.goal;
+
+      // Map dietary preference into dietary_restrictions when possible
+      const pref = profileData?.dietaryPreference ?? 'no_preference';
+      const mapToRestriction = (p: string): string | null => {
+        switch (p) {
+          case 'vegan': return 'vegan';
+          case 'vegetarian': return 'vegetarian';
+          case 'keto': return 'keto';
+          case 'paleo': return 'paleo';
+          case 'gluten_free': return 'gluten_free';
+          case 'no_preference': return 'none';
+          default: return null; // others not in enum
+        }
+      };
+      const restriction = mapToRestriction(pref);
+      if (restriction) {
+        insertData.dietary_restrictions = [restriction];
+      } else {
+        // Keep default if no mapping; set to ['none'] when explicitly 'no_preference'
+        if (pref === 'no_preference') insertData.dietary_restrictions = ['none'];
+      }
 
       await supabase.from('profiles').insert(insertData);
     }

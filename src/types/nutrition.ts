@@ -6,6 +6,7 @@ export interface UserNutritionProfile {
   weight: number; // kg 
   activityLevel: ActivityLevel; 
   goal: NutritionGoal; 
+  dietaryRestrictions?: string[]; 
   bmrCalories?: number; 
   tdeeCalories?: number; 
   goalCalories?: number; 
