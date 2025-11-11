@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { FoodAnalysis as StructuredFoodAnalysis, FoodItem, parseFoodAnalysisResponse } from '@/lib/food-analysis-parser';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { FoodAnalysis as StructuredFoodAnalysis } from '@/lib/food-analysis-parser';
+import { openRouterClient, OpenRouterError } from '@/integrations/openrouter/openrouter-client';
 
 interface UseGeminiLiveOptions {
   apiKey: string;
@@ -17,64 +17,19 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
   const [capturedAnalysis, setCapturedAnalysis] = useState<StructuredFoodAnalysis | null>(null);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const genAIRef = useRef<GoogleGenerativeAI | null>(null);
-  type GeminiModel = ReturnType<GoogleGenerativeAI['getGenerativeModel']>;
-  const modelRef = useRef<GeminiModel | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Safety settings to filter out harmful content (same as gemini-client)
-  const safetySettings = useMemo(() => [
-    {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-  ], []);
-
-  // Initialize Gemini client
+  // Clean up on unmount
   useEffect(() => {
-    if (options.apiKey && !genAIRef.current) {
-      try {
-        genAIRef.current = new GoogleGenerativeAI(options.apiKey);
-        modelRef.current = genAIRef.current.getGenerativeModel({
-          model: "gemini-2.0-flash-exp",
-          safetySettings,
-        });
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to initialize Gemini');
-        setError(error);
-        if (options.onError) {
-          options.onError(error);
-        }
-      }
-    }
-
-    // Clean up on unmount
     return () => {
-      console.log('Cleaning up use-gemini-live hook');
       if (intervalRef.current) {
-        console.log('Clearing interval on unmount');
         clearInterval(intervalRef.current);
       }
     };
-  }, [options, safetySettings]);
+  }, []);
 
-  // Parse JSON response from Gemini with improved error handling
-  const parseAnalysisResponse = (response: string): StructuredFoodAnalysis | null => {
-    return parseFoodAnalysisResponse(response);
-  };
+  // No custom parser here; openRouterClient.analyzeFoodImage returns a structured analysis
 
   // Convert video frame to blob with improved error handling
   const captureFrame = useCallback(async (): Promise<Blob> => {
@@ -160,9 +115,9 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
     });
   };
 
-  // Process a single frame with improved error handling and retry logic
+  // Process a single frame with error handling and retry logic via OpenRouter
   const processFrame = useCallback(async (retryCount = 0) => {
-    if (!modelRef.current || isAnalyzing) return;
+    if (isAnalyzing) return;
 
     setIsAnalyzing(true);
     setError(null);
@@ -170,61 +125,8 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
     try {
       // Capture current frame
       const imageBlob = await captureFrame();
-      const base64Data = await blobToBase64(imageBlob);
-
-      // Create a detailed prompt for food analysis (same as working FoodAnalyzer)
-      const prompt = `You are an expert food nutritionist. Analyze this food image and provide a detailed JSON response with the following structure:
-\`\`\`json
-{
-  "items": [
-    {
-      "name": "food name",
-      "calories": number,
-      "protein": number,
-      "carbs": number,
-      "fat": number,
-      "quantity": "estimated quantity"
-    }
-  ],
-  "totalCalories": number,
-  "totalProtein": number,
-  "totalCarbs": number,
-  "totalFat": number,
-  "healthInsights": ["insight 1", "insight 2"]
-}
-\`\`\`
-
-Instructions:
-1. Identify all food items in the image
-2. Estimate portion sizes and quantities
-3. Provide accurate nutritional information for each item
-4. Calculate totals for all macronutrients
-5. Include 2-3 health insights based on the meal composition
-6. Respond ONLY with valid JSON in a code block. Do not include any other text.
-7. If you cannot identify any food items, return an empty items array.`;
-
-      // Prepare the request
-      const imagePart = {
-        inlineData: {
-          data: base64Data,
-          mimeType: "image/jpeg"
-        }
-      };
-
-      // Send request to Gemini with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-      
       try {
-        const result = await modelRef.current.generateContent([prompt, imagePart]);
-        clearTimeout(timeoutId);
-        const response = await result.response;
-        const text = response.text();
-        
-        console.log('Gemini API response:', text);
-
-        // Parse the response
-        const analysis = parseAnalysisResponse(text);
+        const analysis = await openRouterClient.analyzeFoodImage(imageBlob);
         if (analysis) {
           setCurrentAnalysis(analysis);
           if (options.onAnalysisUpdate) {
@@ -239,12 +141,12 @@ Instructions:
           throw new Error('Unable to analyze food image. Please try again with a clearer image.');
         }
       } catch (err: unknown) {
-        clearTimeout(timeoutId);
-        console.error('Error during Gemini API call:', err);
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          throw new Error('Request timed out. Please try again.');
+        console.error('Error during OpenRouter API call:', err);
+        const msg = err instanceof Error ? err.message : 'Request failed';
+        if (err instanceof OpenRouterError && /API key|not initialized/i.test(msg)) {
+          throw new Error('OpenRouter API key missing. Please provide it to enable live scanning.');
         }
-        throw err;
+        throw new Error(msg);
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred: ' + String(err));
@@ -268,35 +170,9 @@ Instructions:
   // Start streaming analysis
   const startStreaming = useCallback((videoElement: HTMLVideoElement, canvasElement: HTMLCanvasElement) => {
     console.log('Starting streaming...');
-    if (!options.apiKey) {
-      const error = new Error('Gemini API key is missing');
-      console.error(error.message);
-      setError(error);
-      return;
-    }
-
-    if (!genAIRef.current) {
-      try {
-        console.log('Initializing Gemini API...');
-        genAIRef.current = new GoogleGenerativeAI(options.apiKey);
-        modelRef.current = genAIRef.current.getGenerativeModel({
-          model: "gemini-2.0-flash-exp",
-          safetySettings,
-        });
-        console.log('Gemini API initialized successfully');
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to initialize Gemini');
-        console.error('Error initializing Gemini:', error);
-        setError(error);
-        if (options.onError) {
-          options.onError(error);
-        }
-        return;
-      }
-    }
-
-    if (!modelRef.current) {
-      const error = new Error('Failed to initialize Gemini model');
+    // Ensure OpenRouter API key exists
+    if (!import.meta.env.VITE_OPENROUTER_API_KEY) {
+      const error = new Error('OpenRouter API key is missing');
       console.error(error.message);
       setError(error);
       return;
@@ -323,7 +199,7 @@ Instructions:
     return () => {
       stopStreaming();
     };
-  }, [processFrame, options, safetySettings]);
+  }, [processFrame, options]);
 
   // Stop streaming analysis
   const stopStreaming = useCallback(() => {

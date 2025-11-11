@@ -1,8 +1,11 @@
-// OpenRouter API client for GPT-4o integration
-// This client handles text and image processing using OpenRouter's API
+// OpenRouter API client configured to use Google Gemini via OpenRouter
+// Handles text and image processing using OpenRouter's API
+import { parseFoodAnalysisResponse, type FoodAnalysis } from '@/lib/food-analysis-parser';
 
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// Use Gemini 2.5 Flash via OpenRouter
+const GEMINI_MODEL = 'google/gemini-2.5-flash';
 
 // Error class for OpenRouter API errors
 export class OpenRouterError extends Error {
@@ -37,7 +40,7 @@ export class OpenRouterClient {
           'X-Title': 'MealGenie AI'
         },
         body: JSON.stringify({
-          model: options?.model || 'openai/gpt-4o',
+          model: options?.model || GEMINI_MODEL,
           messages
         })
       });
@@ -48,7 +51,11 @@ export class OpenRouterClient {
       }
 
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || '';
+      const content = data?.choices?.[0]?.message?.content || '';
+      if (!content) {
+        console.warn('OpenRouter chat: empty content in response', data);
+      }
+      return content;
     } catch (error: unknown) {
       console.error('Error during OpenRouter chat:', error);
       const message = error instanceof Error ? error.message : 'Failed to complete chat request';
@@ -73,7 +80,7 @@ export class OpenRouterClient {
     }
   }
 
-  // Generate text from a prompt using GPT-4o
+  // Generate text from a prompt using Gemini via OpenRouter
   async generateText(prompt: string): Promise<string> {
     this.checkInitialization();
     
@@ -87,7 +94,7 @@ export class OpenRouterClient {
           'X-Title': 'MealGenie AI'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-4o',
+          model: GEMINI_MODEL,
           messages: [
             { role: 'user', content: prompt }
           ]
@@ -100,7 +107,11 @@ export class OpenRouterClient {
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || '';
+      const content = data?.choices?.[0]?.message?.content || '';
+      if (!content) {
+        console.warn('OpenRouter generateText: empty content in response', data);
+      }
+      return content;
     } catch (error: unknown) {
       console.error('Error generating text with OpenRouter:', error);
       const message = error instanceof Error ? error.message : 'Failed to generate text';
@@ -108,7 +119,7 @@ export class OpenRouterClient {
     }
   }
 
-  // Process an image with text prompt using GPT-4o
+  // Process an image with text prompt using Gemini via OpenRouter
   async processImage(imageData: File | Blob, prompt: string): Promise<string> {
     this.checkInitialization();
     
@@ -127,7 +138,7 @@ export class OpenRouterClient {
           'X-Title': 'MealGenie AI'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-opus:beta',
+          model: GEMINI_MODEL,
           messages: [
             { 
               role: 'user', 
@@ -151,11 +162,48 @@ export class OpenRouterClient {
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || '';
+      const content = data?.choices?.[0]?.message?.content || '';
+      if (!content) {
+        console.warn('OpenRouter processImage: empty content in response', data);
+      }
+      return content;
     } catch (error: unknown) {
       console.error('Error processing image with OpenRouter:', error);
       const message = error instanceof Error ? error.message : 'Failed to process image';
       throw new OpenRouterError(message);
+    }
+  }
+
+  // Analyze a food image and return structured food analysis using Gemini via OpenRouter
+  async analyzeFoodImage(imageData: File | Blob): Promise<FoodAnalysis | null> {
+    this.checkInitialization();
+    const prompt = `You are a nutrition assistant.
+
+Return ONLY a JSON object (no extra words), matching exactly this schema:
+{
+  "items": [
+    {"name": string, "calories": number, "protein": number, "carbs": number, "fat": number, "quantity": string}
+  ],
+  "totalCalories": number,
+  "totalProtein": number,
+  "totalCarbs": number,
+  "totalFat": number,
+  "healthInsights": [string]
+}
+
+Rules:
+- Use numbers only for nutrition fields (no units in values).
+- Estimate portions in "quantity" as a short string (e.g., "1 cup", "150 g").
+- Do not include any explanations or text outside the JSON.
+- If unsure, make reasonable estimates.
+Analyze the food in the image and follow the schema strictly.`;
+
+    try {
+      const text = await this.processImage(imageData, prompt);
+      return parseFoodAnalysisResponse(text);
+    } catch (err) {
+      console.error('Error in analyzeFoodImage:', err);
+      throw err;
     }
   }
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2 } from 'lucide-react';
+import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2, Flame } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import WeeklyMeasurements from '@/components/WeeklyMeasurements';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -48,13 +48,32 @@ const Dashboard = () => {
   const loadUserData = async () => {
     try {
       // Load profile
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user!.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError) throw profileError;
+      // If no profile exists, create a minimal placeholder and redirect to onboarding
+      if (!profileData) {
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user!.id,
+            email: user!.email,
+            full_name: (user as any)?.user_metadata?.full_name ?? null,
+            onboarding_completed: false,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          throw createError;
+        }
+
+        navigate('/onboarding');
+        return;
+      }
 
       if (!profileData?.onboarding_completed) {
         navigate('/onboarding');
@@ -201,22 +220,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card 
-             className="cursor-pointer hover:shadow-lg transition-smooth border-green-500/20 hover:border-green-500"
-             onClick={() => navigate('/food-analyzer?tab=calculator')}
-           >
-             <CardContent className="pt-6">
-               <div className="flex flex-col items-center text-center space-y-3">
-                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                   <Sparkles className="w-8 h-8 text-white" />
-                 </div>
-                 <div>
-                   <h3 className="font-bold text-lg">AI Calories Calculator</h3>
-                   <p className="text-sm text-muted-foreground">Smart calorie needs</p>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
+          {/* Removed duplicate AI Calories Calculator card — calculator exists within Food Analyzer */}
 
           <Card 
             className="cursor-pointer hover:shadow-lg transition-smooth border-amber-500/30 hover:border-amber-500"
@@ -281,6 +285,24 @@ const Dashboard = () => {
             </TooltipTrigger>
             <TooltipContent>Scan any packaged food barcode.</TooltipContent>
           </Tooltip>
+
+          {/* BMI Calculator */}
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-smooth border-rose-500/20 hover:border-rose-500"
+            onClick={() => navigate('/smart-calories-calculator')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                  <Flame className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Smart Calories Calculator</h3>
+                  <p className="text-sm text-muted-foreground">Estimate food calories by weight</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* BMI Calculator */}
           <Card

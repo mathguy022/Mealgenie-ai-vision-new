@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, ArrowLeft, Sparkles, Check, Square, Circle, Upload, Calculator } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
-import { useGemini } from '@/hooks/use-gemini';
+import { useOpenRouter } from '@/hooks/use-openrouter';
 import { useCalorieCalculator } from '@/hooks/use-calorie-calculator';
 import { useAuth } from '@/contexts/AuthContext';
 import foodScanDemo from '@/assets/food-scan-demo.jpg';
@@ -29,8 +29,8 @@ const EnhancedFoodAnalyzer = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('scanner');
   
-  // Initialize Gemini API hook
-  const { processImage, analyzeFoodImage, isLoading, error } = useGemini({
+  // Initialize OpenRouter (Gemini via OpenRouter) API hook
+  const { processImage, analyzeFoodImage, isLoading, error } = useOpenRouter({
     onError: (err) => {
       toast({
         title: 'Analysis Error',

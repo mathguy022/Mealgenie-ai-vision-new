@@ -20,6 +20,10 @@ const BarcodeScanner = () => {
   const [detected, setDetected] = useState<{ rawValue: string; format?: string } | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const detectorRef = useRef<any | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const torchOnRef = useRef<boolean>(false);
+  const scannerModeRef = useRef<'native' | 'zxing' | null>(null);
 
   // No auto-attachment: ZXing manages attaching the stream to the video element.
   useEffect(() => {
@@ -51,20 +55,6 @@ const BarcodeScanner = () => {
       };
 
       const videoEl = await waitForVideo();
-      const reader = new BrowserMultiFormatReader();
-      // Improve reliability and target common formats
-      const hints = new Map();
-      hints.set(DecodeHintType.TRY_HARDER, true);
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-        BarcodeFormat.EAN_13,
-        BarcodeFormat.UPC_A,
-        BarcodeFormat.QR_CODE,
-        BarcodeFormat.EAN_8,
-        BarcodeFormat.CODE_128,
-      ]);
-      // @ts-expect-error setHints exists on underlying reader
-      reader.setHints?.(hints);
-      readerRef.current = reader;
       const constraints: MediaStreamConstraints = {
         audio: false,
         video: {
@@ -74,26 +64,102 @@ const BarcodeScanner = () => {
           advanced: [{ focusMode: 'continuous' as any }],
         },
       };
-      const controls = await reader.decodeFromConstraints(constraints, videoEl, (result, err, ctrl) => {
-        if (result) {
-          const text = result.getText();
-          const fmt = String(result.getBarcodeFormat?.() || '');
-          setDetected({ rawValue: text, format: fmt });
-          toast({ title: 'Barcode detected', description: text });
-          setScanning(false);
-          // Stop scanning to prevent duplicate detections
-          controlsRef.current?.stop();
-          controlsRef.current = null;
-          setCameraActive(false);
-          // Navigate to result page for downstream nutrition analysis
-          try {
-            const encoded = encodeURIComponent(text);
-            navigate(`/barcode-result/${encoded}`);
-          } catch {}
+
+      // Prefer native BarcodeDetector when available
+      const BD = (window as any).BarcodeDetector;
+      let usingNative = false;
+      if (typeof BD === 'function') {
+        try {
+          const supported: string[] = (await BD.getSupportedFormats?.()) || [];
+          const desired = ['ean_13','ean_8','upc_a','code_128','qr_code'];
+          const formats = supported.length ? desired.filter(f => supported.includes(f)) : desired;
+          detectorRef.current = new BD({ formats });
+          usingNative = true;
+        } catch {
+          usingNative = false;
         }
-        // Errors during decoding are expected while searching; ignore them.
-      });
-      controlsRef.current = controls;
+      }
+
+      if (usingNative) {
+        // Attach stream manually and run detection loop
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // @ts-expect-error assign stream
+        videoEl.srcObject = stream;
+        await videoEl.play();
+        scannerModeRef.current = 'native';
+
+        const detectLoop = async () => {
+          if (!detectorRef.current || !videoRef.current || !scanning) return;
+          try {
+            let codes: any[] = [];
+            try {
+              codes = await detectorRef.current.detect(videoRef.current);
+            } catch {
+              // Fallback: use canvas snapshot if direct video detect fails
+              const canvas = canvasRef.current;
+              if (canvas) {
+                const w = videoRef.current.videoWidth || 1280;
+                const h = videoRef.current.videoHeight || 720;
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.drawImage(videoRef.current, 0, 0, w, h);
+                  codes = await detectorRef.current.detect(canvas);
+                }
+              }
+            }
+            if (codes && codes.length) {
+              const code = codes[0];
+              const text = String(code.rawValue || code?.value || '');
+              const fmt = String(code.format || '');
+              if (text) {
+                setDetected({ rawValue: text, format: fmt });
+                toast({ title: 'Barcode detected', description: text });
+                setScanning(false);
+                stopCamera();
+                try { navigate(`/barcode-result/${encodeURIComponent(text)}`); } catch {}
+                return;
+              }
+            }
+          } catch {}
+          rafRef.current = requestAnimationFrame(detectLoop);
+        };
+        rafRef.current = requestAnimationFrame(detectLoop);
+      } else {
+        // Fallback to ZXing
+        const reader = new BrowserMultiFormatReader();
+        const hints = new Map();
+        hints.set(DecodeHintType.TRY_HARDER, true);
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.CODE_128,
+        ]);
+        // @ts-expect-error setHints exists on underlying reader
+        reader.setHints?.(hints);
+        readerRef.current = reader;
+        const controls = await reader.decodeFromConstraints(constraints, videoEl, (result, err, ctrl) => {
+          if (result) {
+            const text = result.getText();
+            const fmt = String(result.getBarcodeFormat?.() || '');
+            setDetected({ rawValue: text, format: fmt });
+            toast({ title: 'Barcode detected', description: text });
+            setScanning(false);
+            // Stop scanning to prevent duplicate detections
+            controlsRef.current?.stop();
+            controlsRef.current = null;
+            setCameraActive(false);
+            // Navigate to result page for downstream nutrition analysis
+            try {
+              const encoded = encodeURIComponent(text);
+              navigate(`/barcode-result/${encoded}`);
+            } catch {}
+          }
+          // Errors during decoding are expected while searching; ignore them.
+        });
+        controlsRef.current = controls;
+      }
     } catch (err) {
       console.error('ZXing start error', err);
       setCameraError('Unable to start scanner');
@@ -109,6 +175,12 @@ const BarcodeScanner = () => {
       controlsRef.current?.stop();
       controlsRef.current = null;
     } catch {}
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    detectorRef.current = null;
+    scannerModeRef.current = null;
     const video = videoRef.current;
     const src = (video?.srcObject as MediaStream | null) || null;
     if (src) src.getTracks().forEach((t) => t.stop());
@@ -118,6 +190,20 @@ const BarcodeScanner = () => {
       video.srcObject = null;
     }
     setCameraActive(false);
+  };
+
+  const toggleTorch = async () => {
+    try {
+      const video = videoRef.current;
+      const stream: MediaStream | null = (video?.srcObject as MediaStream | null) || null;
+      const track = stream?.getVideoTracks?.()[0];
+      const caps: any = track?.getCapabilities?.();
+      if (track && caps && 'torch' in caps) {
+        torchOnRef.current = !torchOnRef.current;
+        await track.applyConstraints({ advanced: [{ torch: torchOnRef.current }] });
+        toast({ title: torchOnRef.current ? 'Flash on' : 'Flash off' });
+      }
+    } catch {}
   };
 
   // Keep image upload handler for future use; currently not exposed in UI.
@@ -188,6 +274,9 @@ const BarcodeScanner = () => {
                   </Button>
                   <Button variant="outline" onClick={stopCamera} className="flex-1" disabled={!cameraActive}>
                     Stop
+                  </Button>
+                  <Button variant="outline" onClick={toggleTorch} className="flex-1" disabled={!cameraActive}>
+                    Flash
                   </Button>
                 </div>
                 {cameraError && (

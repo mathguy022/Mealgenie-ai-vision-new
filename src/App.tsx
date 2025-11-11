@@ -21,6 +21,7 @@ import { GeminiTest } from "@/components/GeminiTest";
 import NutriGenieBot from "./pages/NutriGenieBot";
 import SmartMealGenie from "./pages/SmartMealGenie";
 import BMICalculator from "./pages/BMICalculator";
+import SmartCaloriesCalculator from "./pages/SmartCaloriesCalculator";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
                 <Route path="/nutrigenie" element={<ProtectedRoute><NutriGenieBot /></ProtectedRoute>} />
                 <Route path="/smart-meal-genie" element={<ProtectedRoute><SmartMealGenie /></ProtectedRoute>} />
                 <Route path="/bmi-calculator" element={<ProtectedRoute><BMICalculator /></ProtectedRoute>} />
+                <Route path="/smart-calories-calculator" element={<ProtectedRoute><SmartCaloriesCalculator /></ProtectedRoute>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,10 @@ const Auth = () => {
     goal: '',
     dietaryPreference: '',
   });
+  const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>('metric');
+  const [heightFeet, setHeightFeet] = useState('');
+  const [heightInches, setHeightInches] = useState('');
+  const [weightPounds, setWeightPounds] = useState('');
   
   const [signInData, setSignInData] = useState({
     email: '',
@@ -57,7 +61,19 @@ const Auth = () => {
     e.preventDefault();
     
     try {
-      const validated = signUpSchema.parse(signUpData);
+      // Prepare data with unit conversions if needed
+      const prepared = { ...signUpData };
+      if (unitSystem === 'imperial') {
+        const feet = parseFloat(heightFeet) || 0;
+        const inches = parseFloat(heightInches) || 0;
+        const pounds = parseFloat(weightPounds) || 0;
+        const heightCm = feet * 30.48 + inches * 2.54;
+        const weightKg = pounds * 0.45359237;
+        prepared.height = heightCm ? Math.round(heightCm).toString() : '';
+        prepared.weight = weightKg ? weightKg.toFixed(1) : '';
+      }
+
+      const validated = signUpSchema.parse(prepared);
       setLoading(true);
 
       // Pass additional user profile data
@@ -134,8 +150,8 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute inset-0 gradient-hero opacity-5" />
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+      <div className="absolute inset-0 gradient-hero opacity-5 dark:opacity-10 pointer-events-none" />
       
       <Card className="w-full max-w-md relative shadow-lg">
         <CardHeader className="text-center space-y-2">
@@ -233,30 +249,86 @@ const Auth = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="height">Height (cm)</Label>
-                      <Input
-                        id="height"
-                        type="number"
-                        placeholder="175"
-                        value={signUpData.height}
-                        onChange={(e) => setSignUpData({ ...signUpData, height: e.target.value })}
-                        required
-                      />
+                  <div className="space-y-3 mt-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium">Units</h4>
+                      <div className="flex gap-2">
+                        <Button type="button" variant={unitSystem === 'metric' ? 'default' : 'outline'} size="sm" onClick={() => setUnitSystem('metric')}>Metric</Button>
+                        <Button type="button" variant={unitSystem === 'imperial' ? 'default' : 'outline'} size="sm" onClick={() => setUnitSystem('imperial')}>Imperial</Button>
+                      </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="weight">Weight (kg)</Label>
-                      <Input
-                        id="weight"
-                        type="number"
-                        placeholder="70"
-                        value={signUpData.weight}
-                        onChange={(e) => setSignUpData({ ...signUpData, weight: e.target.value })}
-                        required
-                      />
-                    </div>
+
+                    {unitSystem === 'metric' ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="height">Height (cm)</Label>
+                          <Input
+                            id="height"
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="175"
+                            value={signUpData.height}
+                            onChange={(e) => setSignUpData({ ...signUpData, height: e.target.value })}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="weight">Weight (kg)</Label>
+                          <Input
+                            id="weight"
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="70"
+                            value={signUpData.weight}
+                            onChange={(e) => setSignUpData({ ...signUpData, weight: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="heightFeet">Height (ft)</Label>
+                            <Input
+                              id="heightFeet"
+                              type="number"
+                              inputMode="numeric"
+                              placeholder="5"
+                              value={heightFeet}
+                              onChange={(e) => setHeightFeet(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="heightInches">Height (in)</Label>
+                            <Input
+                              id="heightInches"
+                              type="number"
+                              inputMode="numeric"
+                              placeholder="7"
+                              value={heightInches}
+                              onChange={(e) => setHeightInches(e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="weightPounds">Weight (lb)</Label>
+                          <Input
+                            id="weightPounds"
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="170"
+                            value={weightPounds}
+                            onChange={(e) => setWeightPounds(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">We will convert ft/in and lb to cm and kg on submit.</p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-2 mt-3">

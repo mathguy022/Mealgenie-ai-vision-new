@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { useGemini } from '@/hooks/useGemini';
+import { useOpenRouter } from '@/hooks/use-openrouter';
 import { FoodAnalysisDisplay } from '@/components/FoodAnalysisDisplay';
 import type { FoodAnalysis } from '@/lib/food-analysis-parser';
 
@@ -17,8 +17,8 @@ const FoodPreview = () => {
   // Get the captured image data from location state
   const { imageDataUrl, imageBlob } = location.state || {};
   
-  // Initialize Gemini API hook
-  const { processImage, analyzeFoodImage, isLoading, error } = useGemini({
+  // Initialize OpenRouter (Gemini via OpenRouter) API hook
+  const { processImage, analyzeFoodImage, isLoading, error } = useOpenRouter({
     onError: (err) => {
       toast({
         title: 'Analysis Error',
@@ -75,11 +75,18 @@ const FoodPreview = () => {
     }
   };
 
-  // If no image data is available, redirect back to the analyzer page
-  if (!imageDataUrl) {
-    navigate('/food-analyzer');
-    return null;
-  }
+  // If no image data is available, redirect back gracefully and render a fallback
+  useEffect(() => {
+    if (!imageDataUrl) {
+      // Navigate out of preview if arrived directly without state
+      navigate('/food-analyzer');
+      toast({
+        title: 'No Image to Preview',
+        description: 'Please capture or upload an image first.',
+        variant: 'destructive',
+      });
+    }
+  }, [imageDataUrl, navigate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,8 +106,33 @@ const FoodPreview = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="space-y-6">
+          {/* Fallback when no image is present */}
+          {!imageDataUrl && (
+            <Card>
+              <CardHeader>
+                <CardTitle>No image available</CardTitle>
+                <CardDescription>Capture or upload an image to analyze</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <p className="text-sm text-center text-muted-foreground">
+                    You reached preview without an image. Go back and capture or upload one.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    className="flex-1 gradient-primary text-white"
+                    onClick={() => navigate('/food-analyzer')}
+                  >
+                    Return to Analyzer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {/* Preview Card */}
-          {!analysisResult && (
+          {!analysisResult && imageDataUrl && (
             <Card>
               <CardHeader>
                 <CardTitle>Ready to Analyze</CardTitle>

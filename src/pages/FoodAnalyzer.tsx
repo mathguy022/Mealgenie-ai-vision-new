@@ -6,7 +6,7 @@ import { ArrowLeft, Camera, Circle, Square, Sparkles, Upload, Calculator, Check 
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import foodScanDemo from '@/assets/food-scan-demo.jpg';
-import { useGemini } from '@/hooks/use-gemini';
+import { useOpenRouter } from '@/hooks/use-openrouter';
 import { useCalorieCalculator } from '@/hooks/use-calorie-calculator';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,8 +36,8 @@ const FoodAnalyzer = () => {
   const [activeTab, setActiveTab] = useState<string>(tabParam === 'calculator' ? 'calculator' : 'scanner');
   const capturedImageBlobRef = useRef<Blob | null>(null);
   
-  // Initialize Gemini API hook
-  const { processImage, analyzeFoodImage, isLoading, error } = useGemini({
+  // Initialize OpenRouter (Gemini via OpenRouter) API hook
+  const { processImage, analyzeFoodImage, isLoading, error } = useOpenRouter({
     onError: (err) => {
       toast({
         title: 'Analysis Error',
@@ -526,16 +526,16 @@ const FoodAnalyzer = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Check if analysisResult is a structured FoodAnalysis object or plain text */}
-                {'items' in analysisResult ? (
+                {typeof analysisResult === 'object' && analysisResult !== null && 'items' in analysisResult ? (
                   <>
-                    <FoodAnalysisDisplay analysis={analysisResult} />
+                    <FoodAnalysisDisplay analysis={analysisResult as FoodAnalysis} />
                     {capturedImage && (
                       <FoodLogEntry 
-                        foodName={analysisResult.items?.[0]?.name || "Unknown Food"}
-                        calories={analysisResult.totalCalories}
-                        protein={analysisResult.totalProtein}
-                        carbs={analysisResult.totalCarbs}
-                        fat={analysisResult.totalFat}
+                        foodName={(analysisResult as FoodAnalysis).items?.[0]?.name || "Unknown Food"}
+                        calories={(analysisResult as FoodAnalysis).totalCalories}
+                        protein={(analysisResult as FoodAnalysis).totalProtein}
+                        carbs={(analysisResult as FoodAnalysis).totalCarbs}
+                        fat={(analysisResult as FoodAnalysis).totalFat}
                         imageUrl={capturedImage}
                         userId={user?.id}
                       />
