@@ -20,7 +20,7 @@ const Welcome = () => {
             <nav className="hidden md:flex items-center gap-6 ml-6">
               <Button variant="ghost" size="sm" onClick={() => navigate('/pricing')} className="text-muted-foreground hover:text-foreground">Pricing</Button>
               <Button variant="ghost" size="sm" onClick={() => navigate('/how-it-works')} className="text-muted-foreground hover:text-foreground">How it Works</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/security')} className="text-muted-foreground hover:text-foreground">Security/Privacy</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/security-privacy')} className="text-muted-foreground hover:text-foreground">Security/Privacy</Button>
             </nav>
           </div>
           <div className="flex gap-4">
@@ -205,6 +205,13 @@ const Welcome = () => {
                 to: '/smart-meal-genie',
               },
               {
+                title: 'GLP‑1 Companion',
+                subtitle: 'Your personalized medication tracker',
+                extra: 'Track meds, weight, side effects',
+                gradient: 'from-violet-500 to-purple-600',
+                to: '/glp1',
+              },
+              {
                 icon: Flame,
                 title: 'AI Calories Calculator',
                 subtitle: 'Estimate calories by weight or serving and adjust for goals.',
@@ -227,11 +234,14 @@ const Welcome = () => {
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shrink-0`}>
-                      <tool.icon className="w-6 h-6 text-white" />
+                      <span className="text-white font-bold text-lg">G</span>
                     </div>
                     <div className="flex-1">
                       <h3 className="text-base font-bold">{tool.title}</h3>
                       <p className="text-sm text-muted-foreground mt-1">{tool.subtitle}</p>
+                      {tool.extra && (
+                        <p className="text-xs text-muted-foreground mt-1">{tool.extra}</p>
+                      )}
                       {tool.badges && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {tool.badges.map((b, i) => (
@@ -298,23 +308,23 @@ const Welcome = () => {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><button onClick={() => navigate('/pricing')}>Pricing</button></li>
                 <li><button onClick={() => navigate('/how-it-works')}>How it Works</button></li>
-                <li><button onClick={() => navigate('/security')}>Security/Privacy</button></li>
+                <li><button onClick={() => navigate('/security-privacy')}>Security/Privacy</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-3">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button onClick={() => navigate('/auth')}>Contact</button></li>
-                <li><button onClick={() => navigate('/auth')}>Help Center</button></li>
-                <li><button onClick={() => navigate('/auth')}>Guides</button></li>
+                <li><button onClick={() => navigate('/security-privacy#help')}>Contact</button></li>
+                <li><button onClick={() => navigate('/security-privacy#help')}>Help Center</button></li>
+                <li><button onClick={() => navigate('/security-privacy#faq')}>Guides</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-3">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button onClick={() => navigate('/terms')}>Terms</button></li>
-                <li><button onClick={() => navigate('/privacy')}>Privacy</button></li>
-                <li><button onClick={() => navigate('/cookies')}>Cookies</button></li>
+                <li><button onClick={() => navigate('/security-privacy#terms')}>Terms</button></li>
+                <li><button onClick={() => navigate('/security-privacy#privacy')}>Privacy</button></li>
+                <li><button onClick={() => navigate('/security-privacy#cookies')}>Cookies</button></li>
               </ul>
             </div>
             <div>

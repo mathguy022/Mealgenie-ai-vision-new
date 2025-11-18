@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { Apple, Sparkles, Camera, TrendingUp } from 'lucide-react';
+import { Apple, Sparkles, Camera, TrendingUp, Radar } from 'lucide-react';
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -84,8 +84,8 @@ const Welcome = () => {
                 description: 'Point your camera at any meal to instantly recognize food items and calculate nutrition with AI precision.',
               },
               {
-                icon: Apple,
-                title: 'Smart Meal Planning',
+                icon: Radar,
+                title: 'Personalized Meal Plans',
                 description: 'AI-generated meal plans tailored to your goals, dietary restrictions, and preferences.',
               },
               {

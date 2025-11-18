@@ -156,7 +156,7 @@ const Dashboard = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <button className="flex items-center gap-3" onClick={() => navigate('/')}> 
               <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
@@ -169,7 +169,7 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-muted-foreground">Welcome back, {profile.full_name?.split(' ')[0]}!</p>
               </div>
-            </div>
+            </button>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => navigate('/profile')}>
                 <User className="w-5 h-5" />
@@ -185,7 +185,7 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Quick Actions */}
-        <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+  <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
           <Card 
             className="cursor-pointer hover:shadow-lg transition-smooth border-primary/20 hover:border-primary"
             onClick={() => navigate('/scan')}
@@ -198,6 +198,25 @@ const Dashboard = () => {
                 <div>
                   <h3 className="font-bold text-lg">Food Analyzer</h3>
                   <p className="text-sm text-muted-foreground">AI-powered recognition</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* GLP-1 Companion */}
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-smooth border-violet-500/20 hover:border-violet-500"
+            onClick={() => navigate('/glp1')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-2xl">G</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">GLP‑1 Companion</h3>
+                  <p className="text-sm text-muted-foreground">Your personalized medication tracker</p>
+                  <p className="text-xs text-muted-foreground">Track meds, weight, side effects</p>
                 </div>
               </div>
             </CardContent>

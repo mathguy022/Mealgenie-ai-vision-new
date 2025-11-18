@@ -124,6 +124,9 @@ All colors MUST be HSL.
   .gradient-primary {
     @apply bg-gradient-to-r from-primary to-primary-light;
   }
+  .gradient-secondary {
+    @apply bg-gradient-to-br from-secondary to-primary-light;
+  }
   
   .gradient-hero {
     @apply bg-gradient-to-br from-primary to-secondary;

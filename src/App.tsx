@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Welcome from "./pages/Welcome";
+import HowItWorks from "./pages/HowItWorks";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
@@ -22,6 +23,8 @@ import NutriGenieBot from "./pages/NutriGenieBot";
 import SmartMealGenie from "./pages/SmartMealGenie";
 import BMICalculator from "./pages/BMICalculator";
 import SmartCaloriesCalculator from "./pages/SmartCaloriesCalculator";
+import SecurityPrivacy from "./pages/SecurityPrivacy";
+import GLP1Companion from "./pages/GLP1Companion";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +54,9 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Welcome />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/security-privacy" element={<SecurityPrivacy />} />
+                <Route path="/glp1" element={<ProtectedRoute><GLP1Companion /></ProtectedRoute>} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/scan" element={<ProtectedRoute><FoodAnalyzer /></ProtectedRoute>} />

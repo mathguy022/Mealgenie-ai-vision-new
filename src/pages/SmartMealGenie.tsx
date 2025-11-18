@@ -391,7 +391,26 @@ export default function SmartMealGenie() {
     setLoading(true);
     try {
       const today = new Date().toISOString().slice(0,10);
-      const t = computeTargetsFromProfile(profile);
+      let t = computeTargetsFromProfile(profile);
+      // GLP-1 Companion adjustments
+      try {
+        const glpOn = localStorage.getItem('glp1Mode') === 'on';
+        if (glpOn) {
+          const pt = parseFloat(localStorage.getItem('glp1ProteinTargetG') || '0');
+          if (!Number.isNaN(pt) && pt > 0) {
+            t.protein.grams = Math.max(t.protein.grams, Math.round(pt));
+            const kcalFromProtein = t.protein.grams * 4;
+            const remain = Math.max(400, t.calories - kcalFromProtein);
+            // bias toward higher protein by trimming carbs slightly
+            t.carbs.grams = Math.max(0, Math.round((remain * 0.45) / 4));
+            t.fat.grams = Math.max(0, Math.round((remain * 0.20) / 9));
+            const totalCal = kcalFromProtein + t.carbs.grams * 4 + t.fat.grams * 9;
+            t.protein.percentage = Math.round((kcalFromProtein / totalCal) * 100);
+            t.carbs.percentage = Math.round(((t.carbs.grams * 4) / totalCal) * 100);
+            t.fat.percentage = Math.round(((t.fat.grams * 9) / totalCal) * 100);
+          }
+        }
+      } catch {}
       setTargets(t);
       const meals = buildTemplateMeals(profile, t);
       // add substitution tip per meal
