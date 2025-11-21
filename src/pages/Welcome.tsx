@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Apple, Sparkles, Camera, TrendingUp, Scan, Bot, Wand2, Flame, Star, MessageSquare, Waves, UtensilsCrossed, Radar } from 'lucide-react';
+import { Apple, Sparkles, Camera, TrendingUp, Scan, Bot, Wand2, Flame, Star, MessageSquare, Waves, UtensilsCrossed, Radar, Pill } from 'lucide-react';
 import heroFood from '@/assets/hero-food.jpg';
 
 const Welcome = () => {
@@ -205,7 +205,8 @@ const Welcome = () => {
                 to: '/smart-meal-genie',
               },
               {
-                title: 'GLP‑1 Companion',
+                icon: Pill,
+                title: 'My GLP‑1 Journey',
                 subtitle: 'Your personalized medication tracker',
                 extra: 'Track meds, weight, side effects',
                 gradient: 'from-violet-500 to-purple-600',
@@ -234,7 +235,11 @@ const Welcome = () => {
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shrink-0`}>
-                      <span className="text-white font-bold text-lg">G</span>
+                      {tool.icon ? (
+                        <tool.icon className="w-6 h-6 text-white" />
+                      ) : (
+                        <span className="text-white font-bold text-lg">G</span>
+                      )}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-base font-bold">{tool.title}</h3>

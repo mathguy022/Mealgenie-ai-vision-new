@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Pill, Sparkles, Bot as BotIcon, Syringe, LayoutDashboard, Scale, AlertCircle, Apple, UtensilsCrossed, Bell } from 'lucide-react';
+import { Activity, Pill, Sparkles, Bot as BotIcon, Syringe, LayoutDashboard, Scale, AlertCircle, Apple, UtensilsCrossed, Bell, TrendingUp, FlaskConical, Plus, CalendarClock } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
+import { RadialBarChart, RadialBar, PolarAngleAxis, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
@@ -38,6 +38,7 @@ export default function GLP1Companion() {
   const [checkinMood, setCheckinMood] = useState<string>('good');
   const [checkinSelections, setCheckinSelections] = useState<string[]>([]);
   const [energyLevel, setEnergyLevel] = useState<number>(5);
+  const [tab, setTab] = useState<'dashboard'|'medication'|'metrics'|'effects'|'nutrition'|'plans'>('dashboard');
 
   const leanMass = useMemo(() => calcLeanMassKg(weightKg || 0, bodyFat || 0), [weightKg, bodyFat]);
   const recommendedProtein = useMemo(() => Math.round(leanMass * 1.8), [leanMass]);
@@ -102,6 +103,37 @@ export default function GLP1Companion() {
     return sites[(idx + 1 + sites.length) % sites.length];
   }
 
+  function computeNextDoseDate(): Date | null {
+    try {
+      const now = new Date();
+      const t = (reminderTime || '09:00').split(':').map(x => parseInt(x));
+      const target = new Date();
+      target.setHours(t[0] || 9, t[1] || 0, 0, 0);
+      const currentDow = target.getDay();
+      let addDays = (injectionDay - currentDow + 7) % 7;
+      if (addDays === 0 && target <= now) addDays = 7;
+      target.setDate(target.getDate() + addDays);
+      return target;
+    } catch {
+      return null;
+    }
+  }
+
+  const weightSeries = [
+    { week: 'Week 1', lbs: 338 },
+    { week: 'Week 2', lbs: 334 },
+    { week: 'Week 3', lbs: 328 },
+    { week: 'Week 4', lbs: 320 },
+    { week: 'Week 5', lbs: 312 },
+    { week: 'Week 6', lbs: 305 },
+    { week: 'Week 7', lbs: 298 },
+    { week: 'Week 8', lbs: 290 },
+  ];
+  const [chartData, setChartData] = useState(weightSeries);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logWeek, setLogWeek] = useState<string>('');
+  const [logWeight, setLogWeight] = useState<string>('');
+
   const markDoseComplete = () => {
     const ns = nextSite(lastSite);
     setLastSite(ns);
@@ -137,8 +169,7 @@ export default function GLP1Companion() {
   };
 
   const saveMedicationSchedule = () => {
-    const enteredDose = doseRef.current?.value?.trim() || dose;
-    setDose(enteredDose);
+    const enteredDose = dose;
     localStorage.setItem('glp1Med', medName);
     localStorage.setItem('glp1Dose', enteredDose);
     localStorage.setItem('glp1InjectionDay', String(injectionDay));
@@ -190,27 +221,29 @@ export default function GLP1Companion() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-card shadow-sm">
-        <div className="container mx-auto px-4 h-18 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-gradient-to-r from-[#6C4CEA] to-[#8B5CF6] shadow-sm">
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between text-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
               <span className="text-white font-bold">G</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">GLP‑1 Companion</h1>
-              <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</p>
+              <h1 className="text-2xl font-bold">My GLP‑1 Journey</h1>
+              <p className="text-sm opacity-90">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Next Dose</div>
-              <div className="text-sm font-semibold">{formatNextDose(nextDose)}</div>
+            <div className="hidden md:block">
+              <input className="h-10 w-64 rounded-full px-4 bg-white/20 text-white placeholder:text-white/70 focus:outline-none focus:ring-2 focus:ring-white/60" placeholder="Search..." />
             </div>
-            <Button className="bg-indigo-600 text-white" onClick={() => setCheckInOpen(true)}>Check In</Button>
-            <Button variant="outline" size="icon"><Bell className="w-5 h-5" /></Button>
+            <div className="text-right hidden md:block">
+              <div className="text-sm opacity-90">Next Dose</div>
+              <div className="text-base font-semibold">{formatNextDose(nextDose)}</div>
+            </div>
+            <Button variant="outline" className="bg-white/20 border-white/40 text-white" onClick={() => setCheckInOpen(true)}>Check In</Button>
+            <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-semibold">JD</div>
           </div>
         </div>
-        
       </header>
       <Dialog open={checkInOpen} onOpenChange={setCheckInOpen}>
         <DialogContent>
@@ -277,59 +310,121 @@ export default function GLP1Companion() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={logOpen} onOpenChange={setLogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Weight Point</DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm font-medium mb-2"># Week</div>
+              <Input placeholder="e.g., 3" value={logWeek} onChange={(e)=>setLogWeek(e.target.value)} />
+            </div>
+            <div>
+              <div className="text-sm font-medium mb-2">Weight (lbs)</div>
+              <Input type="number" inputMode="decimal" placeholder="e.g., 312" value={logWeight} onChange={(e)=>setLogWeight(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-6">
+            <Button variant="outline" className="flex-1" onClick={()=>setLogOpen(false)}>Cancel</Button>
+            <Button className="bg-indigo-600 text-white flex-1" onClick={()=>{
+              const w = Math.max(1, parseInt(logWeek || '0'));
+              const lbs = parseFloat(logWeight || '0');
+              if (!Number.isFinite(lbs) || lbs <= 0) { toast({ title:'Enter a valid weight' }); return; }
+              const wk = `Week ${w}`;
+              const next = [...chartData.filter(p=>p.week!==wk), { week: wk, lbs }].sort((a,b)=>parseInt(a.week.replace(/\D/g,'')) - parseInt(b.week.replace(/\D/g,'')));
+              setChartData(next);
+              setLogOpen(false);
+              setLogWeek('');
+              setLogWeight('');
+              toast({ title:'Logged', description:`${wk}: ${lbs} lbs` });
+            }}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <main className="container mx-auto px-4 py-6 max-w-7xl">
-        <Tabs defaultValue="dashboard">
-          <TabsList className="flex w-full overflow-x-auto border-b">
-            <TabsTrigger value="dashboard" className="px-4 py-3 data-[state=active]:text-indigo-600 data-[state=active]:font-bold data-[state=active]:border-b-4 data-[state=active]:border-indigo-600 flex items-center gap-2"><LayoutDashboard className="w-4 h-4" /> Dashboard</TabsTrigger>
-            <TabsTrigger value="medication" className="px-4 py-3 data-[state=active]:text-indigo-600 data-[state=active]:font-bold data-[state=active]:border-b-4 data-[state=active]:border-indigo-600 flex items-center gap-2"><Pill className="w-4 h-4" /> Medication</TabsTrigger>
-            <TabsTrigger value="metrics" className="px-4 py-3 data-[state=active]:text-indigo-600 data-[state=active]:font-bold data-[state=active]:border-b-4 data-[state=active]:border-indigo-600 flex items-center gap-2"><Scale className="w-4 h-4" /> Weight & Metrics</TabsTrigger>
-            <TabsTrigger value="effects" className="px-4 py-3 data-[state=active]:text-indigo-600 data-[state=active]:font-bold data-[state=active]:border-b-4 data-[state=active]:border-indigo-600 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Side Effects</TabsTrigger>
-            <TabsTrigger value="nutrition" className="px-4 py-3 data-[state=active]:text-indigo-600 data-[state=active]:font-bold data-[state=active]:border-b-4 data-[state=active]:border-indigo-600 flex items-center gap-2"><Apple className="w-4 h-4" /> Nutrition</TabsTrigger>
-            <TabsTrigger value="plans" className="px-4 py-3 data-[state=active]:text-indigo-600 data-[state=active]:font-bold data-[state=active]:border-b-4 data-[state=active]:border-indigo-600 flex items-center gap-2"><UtensilsCrossed className="w-4 h-4" /> Meal Plans</TabsTrigger>
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="flex w-full overflow-x-auto rounded-2xl bg-[#F5F3FF] border border-[#E9D5FF] px-2 py-2">
+            <TabsTrigger value="dashboard" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><LayoutDashboard className="w-4 h-4" /> Dashboard</TabsTrigger>
+            <TabsTrigger value="medication" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Pill className="w-4 h-4" /> Medication</TabsTrigger>
+            <TabsTrigger value="metrics" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Scale className="w-4 h-4" /> Weight & Metrics</TabsTrigger>
+            <TabsTrigger value="effects" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><AlertCircle className="w-4 h-4" /> Side Effects</TabsTrigger>
+            <TabsTrigger value="nutrition" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Apple className="w-4 h-4" /> Nutrition</TabsTrigger>
+            <TabsTrigger value="plans" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><UtensilsCrossed className="w-4 h-4" /> Meal Plans</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="dashboard" className="pt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="pt-6 lg:flex gap-6">
+            <aside className="hidden lg:block w-60">
+              <div className="rounded-2xl p-4 bg-gradient-to-b from-[#F3E8FF] to-[#EDE9FE] border border-[#E9D5FF]">
+                <nav className="space-y-2">
+                  <button onClick={() => setTab('dashboard')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='dashboard'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                    <LayoutDashboard className="w-4 h-4" /> Dashboard
+                  </button>
+                  <button onClick={() => setTab('medication')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='medication'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                    <Pill className="w-4 h-4" /> Medication
+                  </button>
+                  <button onClick={() => setTab('metrics')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='metrics'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                    <Scale className="w-4 h-4" /> Weight & Metrics
+                  </button>
+                  <button onClick={() => setTab('effects')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='effects'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                    <AlertCircle className="w-4 h-4" /> Side Effects
+                  </button>
+                  <button onClick={() => setTab('nutrition')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='nutrition'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                    <Apple className="w-4 h-4" /> Nutrition
+                  </button>
+                  <button onClick={() => setTab('plans')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='plans'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                    <UtensilsCrossed className="w-4 h-4" /> Meal Plans
+                  </button>
+                </nav>
+              </div>
+            </aside>
+            <div className="flex-1">
+          <TabsContent value="dashboard" className="pt-0">
+            <div className="rounded-2xl p-6 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow mb-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-2xl font-bold">Welcome back, John!</div>
+                  <div className="text-sm opacity-90">Track your GLP‑1 journey and stay on top of your health goals</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs opacity-80">Today’s Date</div>
+                  <div className="text-sm font-semibold">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><div className="text-xs text-gray-500">Current Weight</div><div className="text-3xl font-extrabold">{Math.round(weightKg*2.2046)} lbs</div><div className="text-xs text-green-600">↓ 15 lbs</div></div><div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center"><TrendingUp className="w-4 h-4 text-green-600" /></div></div></CardContent></Card>
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><div className="text-xs text-gray-500">Water Intake</div><div className="text-3xl font-extrabold">2.1 L</div><div className="text-xs text-indigo-600">75% of goal</div></div><div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center"><FlaskConical className="w-4 h-4 text-indigo-600" /></div></div></CardContent></Card>
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><div className="text-xs text-gray-500">Protein Intake</div><div className="text-3xl font-extrabold">85g</div><div className="text-xs text-amber-600">85% of goal</div></div><div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center"><Plus className="w-4 h-4 text-amber-600" /></div></div></CardContent></Card>
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><div className="text-xs text-gray-500">Last Injection</div><div className="text-3xl font-extrabold">{(() => { if(!injectionHistory.length) return '—'; const last = new Date(injectionHistory[0].date); const diff=Math.floor((Date.now()-last.getTime())/86400000); return `${diff} days`; })()}</div><div className="text-xs text-indigo-600">Due tomorrow</div></div><div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center"><CalendarClock className="w-4 h-4 text-purple-600" /></div></div></CardContent></Card>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm">
                 <CardContent className="p-6">
-                  <div className="font-semibold mb-4">Current Status</div>
-                  <div className="space-y-4 text-sm">
-                    <div className="flex items-center justify-between"><span className="text-muted-foreground">Current Weight</span><span className="font-semibold">-- lbs</span></div>
-                    <div className="flex items-center justify-between"><span className="text-muted-foreground">Weekly Progress</span><span className="text-green-600">-- lbs</span></div>
-                    <div className="flex items-center justify-between"><span className="text-muted-foreground">Medication This Week</span><span className="font-medium">On Track</span></div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-semibold">Weight Progress</div>
+                    <Button onClick={()=>setLogOpen(true)} className="h-9 px-4 rounded-full bg-gradient-to-r from-[#6C4CEA] to-[#8B5CF6] text-white shadow">Log</Button>
+                  </div>
+                  <div className="h-56 rounded-xl bg-gradient-to-b from-[#F5F3FF] to-[#E9D5FF] p-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis type="category" dataKey="week" tick={{ fontSize: 11, fill: '#6B7280' }} tickMargin={8} />
+                        <YAxis type="number" domain={[180, 400]} tick={{ fontSize: 11, fill: '#6B7280' }} tickMargin={4} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="lbs" stroke="#6C4CEA" strokeWidth={3} dot={{ r: 3, stroke: '#6C4CEA', strokeWidth: 2 }} activeDot={{ r: 4 }}>
+                          <LabelList dataKey="lbs" position="right" fill="#6C4CEA" fontSize={11} />
+                        </Line>
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
-
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <CardContent className="p-6">
-                  <div className="font-semibold mb-4">Protein Target</div>
-                  <div className="flex items-center gap-6">
-                    <RadialBarChart width={120} height={120} innerRadius={45} outerRadius={55} data={[{ name:'p', value:50, fill:'#6366F1' }]} startAngle={90} endAngle={-270}>
-                      <PolarAngleAxis type="number" domain={[0,100]} tick={false} />
-                      <RadialBar dataKey="value" cornerRadius={8} />
-                    </RadialBarChart>
-                    <div>
-                      <div className="text-2xl font-bold">50%</div>
-                      <div className="text-sm text-muted-foreground">60g / 120g</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <CardContent className="p-6">
-                  <div className="font-semibold mb-4">Lean Body Mass</div>
-                  <div className="space-y-4 text-sm">
-                    <div className="flex items-center justify-between"><span className="text-muted-foreground">Current LBM</span><span className="font-semibold">-- lbs</span></div>
-                    <div className="flex items-center justify-between"><span className="text-muted-foreground">LBM %</span><span className="text-indigo-600">--%</span></div>
-                    <div className="flex items-center justify-between"><span className="text-muted-foreground">Trend</span><span className="text-green-600">Stable</span></div>
-                  </div>
-                </CardContent>
-              </Card>
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-6"><div className="font-semibold mb-3">Today’s Health Metrics</div><div className="space-y-2 text-sm"><div className="flex items-center justify-between"><span className="text-gray-700">Blood Sugar</span><span className="text-green-600 font-medium">98 mg/dL</span></div><div className="flex items-center justify-between"><span className="text-gray-700">Blood Pressure</span><span className="text-blue-600 font-medium">120/80 mmHg</span></div><div className="flex items-center justify-between"><span className="text-gray-700">Calories</span><span className="text-red-600 font-medium">1,450 kcal</span></div><div className="flex items-center justify-between"><span className="text-gray-700">Side Effects</span><span className="text-red-600 font-medium">Mild nausea</span></div></div></CardContent></Card>
             </div>
 
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mt-6">
+            <Card className="bg-white rounded-2xl shadow-sm border border-gray-200 mt-6">
               <CardContent className="p-6">
                 <div className="font-semibold mb-2">Recent Activity</div>
                 <div className="text-sm text-muted-foreground">No recent activity.</div>
@@ -337,7 +432,7 @@ export default function GLP1Companion() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="medication" className="pt-6">
+          <TabsContent value="medication" className="pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <CardHeader><CardTitle>Medication Schedule</CardTitle></CardHeader>
@@ -417,7 +512,7 @@ export default function GLP1Companion() {
             </div>
           </TabsContent>
 
-          <TabsContent value="metrics" className="pt-6">
+          <TabsContent value="metrics" className="pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <CardHeader><CardTitle>Log Weight & Metrics</CardTitle></CardHeader>
@@ -434,7 +529,7 @@ export default function GLP1Companion() {
             </div>
           </TabsContent>
 
-          <TabsContent value="effects" className="pt-6">
+          <TabsContent value="effects" className="pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <CardHeader><CardTitle>Log Side Effect</CardTitle></CardHeader>
@@ -483,7 +578,7 @@ export default function GLP1Companion() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="nutrition" className="pt-6">
+          <TabsContent value="nutrition" className="pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <CardHeader><CardTitle>Daily Nutrition</CardTitle></CardHeader>
@@ -520,7 +615,7 @@ export default function GLP1Companion() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="plans" className="pt-6">
+          <TabsContent value="plans" className="pt-0">
             <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
               <CardHeader className="flex items-center justify-between"><CardTitle>Auto-Generated Meal Plan</CardTitle><Button className="bg-indigo-600 text-white">Generate New Plan</Button></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="text-sm text-muted-foreground">Generate to view plan.</div></CardContent>
@@ -530,6 +625,8 @@ export default function GLP1Companion() {
               <Card className="bg-white rounded-xl shadow-sm border border-gray-200"><CardHeader><CardTitle>Protein-Rich Foods</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-4"><div><div className="text-sm font-semibold">Animal Proteins</div><ul className="text-sm text-muted-foreground space-y-1"><li>• Chicken breast</li><li>• Turkey</li><li>• White fish</li><li>• Greek yogurt</li><li>• Eggs</li><li>• Cottage cheese</li></ul></div><div><div className="text-sm font-semibold">Plant Proteins</div><ul className="text-sm text-muted-foreground space-y-1"><li>• Tofu</li><li>• Tempeh</li><li>• Lentils</li><li>• Protein powder</li><li>• Edamame</li><li>• Protein pasta</li></ul></div></CardContent></Card>
             </div>
           </TabsContent>
+            </div>
+          </div>
         </Tabs>
       </main>
     </div>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2, Flame } from 'lucide-react';
+import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2, Flame, Pill } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import WeeklyMeasurements from '@/components/WeeklyMeasurements';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -203,18 +203,18 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* GLP-1 Companion */}
+          {/* My GLP-1 Journey */}
           <Card 
             className="cursor-pointer hover:shadow-lg transition-smooth border-violet-500/20 hover:border-violet-500"
             onClick={() => navigate('/glp1')}
           >
             <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center text-center space-y-3">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">G</span>
+                  <Pill className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">GLP‑1 Companion</h3>
+                  <h3 className="font-bold text-lg">My GLP‑1 Journey</h3>
                   <p className="text-sm text-muted-foreground">Your personalized medication tracker</p>
                   <p className="text-xs text-muted-foreground">Track meds, weight, side effects</p>
                 </div>
