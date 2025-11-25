@@ -119,4 +119,9 @@ export interface CalorieCalculatorResult {
     fat: { grams: number; calories: number; percentage: number }; 
   }; 
   explanation: string; 
+  constraints?: { 
+    dietType?: string; 
+    minProteinPerMeal?: number; 
+    maxCarbsPerMeal?: number; 
+  }; 
 }

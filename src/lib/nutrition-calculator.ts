@@ -81,11 +81,17 @@ export function calculateMacroBreakdown(goalCalories: number, goal: NutritionGoa
   
   // Dietary overrides (e.g., keto)
   const isKeto = Array.isArray(dietaryRestrictions) && dietaryRestrictions.includes('keto');
+  const isGlp1 = Array.isArray(dietaryRestrictions) && dietaryRestrictions.includes('glp1');
   if (isKeto) {
     // Typical keto macro ratios
     proteinPercentage = 0.20; // 20% protein
     fatPercentage = 0.75;     // 75% fat
     carbsPercentage = 0.05;   // 5% carbs
+  } else if (isGlp1) {
+    // GLP-1 friendly macro ratios
+    proteinPercentage = 0.35; // 35% protein
+    carbsPercentage   = 0.30; // 30% carbs
+    fatPercentage     = 0.35; // 35% fat
   } else {
   // Adjust macro ratios based on goal
   switch (goal) {
@@ -200,7 +206,10 @@ export function calculateNutrition(profile: UserNutritionProfile): CalorieCalcul
     tdee,
     goalCalories,
     macroBreakdown,
-    explanation: ''
+    explanation: '',
+    constraints: Array.isArray(profile.dietaryRestrictions) && profile.dietaryRestrictions.includes('glp1')
+      ? { dietType: 'glp1', minProteinPerMeal: 25, maxCarbsPerMeal: 30 }
+      : undefined
   };
   
   result.explanation = generateExplanation(profile, result);

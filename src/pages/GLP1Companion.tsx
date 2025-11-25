@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Pill, Sparkles, Bot as BotIcon, Syringe, LayoutDashboard, Scale, Apple, UtensilsCrossed, Bell, TrendingUp, FlaskConical, Plus, CalendarClock, NotebookPen } from 'lucide-react';
+import { Activity, Pill, Sparkles, Bot as BotIcon, Syringe, LayoutDashboard, Apple, UtensilsCrossed, Bell, TrendingUp, FlaskConical, Plus, CalendarClock, NotebookPen, Pencil, Trash2, PlusCircle, Droplet, ShoppingCart } from 'lucide-react';
+import SmartMealGenie from './SmartMealGenie';
+import { calculateNutrition } from '@/lib/nutrition-calculator';
+import { ActivityLevel, NutritionGoal } from '@/types/nutrition';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { RadialBarChart, RadialBar, PolarAngleAxis, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -38,7 +42,7 @@ export default function GLP1Companion() {
   const [checkinMood, setCheckinMood] = useState<string>('good');
   const [checkinSelections, setCheckinSelections] = useState<string[]>([]);
   const [energyLevel, setEnergyLevel] = useState<number>(5);
-  const [tab, setTab] = useState<'dashboard'|'medication'|'metrics'|'nutrition'|'plans'|'journal'>('dashboard');
+  const [tab, setTab] = useState<'dashboard'|'medication'|'nutrition'|'plans'|'journal'|'tracker'>('dashboard');
   const [journalDate, setJournalDate] = useState<string>(()=> new Date().toISOString().split('T')[0]);
   const [journalTime, setJournalTime] = useState<string>(()=> new Date().toTimeString().slice(0,5));
   const [journalText, setJournalText] = useState<string>('');
@@ -53,6 +57,13 @@ export default function GLP1Companion() {
   const [journalEntries, setJournalEntries] = useState<Array<any>>([]);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [aiTips, setAiTips] = useState<string[]>([]);
+  const [selectedDiet, setSelectedDiet] = useState<'Keto'|'Vegan'|'Mediterranean'|'Low-Carb'|'High-Protein'|'Custom'>('High-Protein');
+  const [planMeals, setPlanMeals] = useState<Array<{ title:string; items:string[] }>>([]);
+  const [groceryItems, setGroceryItems] = useState<string[]>([]);
+  const [targets, setTargets] = useState<{ calories:number; protein:{grams:number}; carbs:{grams:number}; fat:{grams:number} } | null>(null);
+  const [trackerEntries, setTrackerEntries] = useState<Array<{ id:string; userId?:string; weekNumber:number; startWeight:number; endWeight:number; weightUnit:'lbs'|'kg'; medicationName?:string; dosage?:string; notes?:string; periodStartDate?:string; createdAt:string; updatedAt:string }>>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState<{ id:string; weekNumber:number; startWeight?:number; endWeight?:number; startWeightText?:string; endWeightText?:string; weightUnit:'lbs'|'kg'; medicationName?:string; dosage?:string; notes?:string; periodStartDate?:string }|null>(null);
 
   const leanMass = useMemo(() => calcLeanMassKg(weightKg || 0, bodyFat || 0), [weightKg, bodyFat]);
   const recommendedProtein = useMemo(() => Math.round(leanMass * 1.8), [leanMass]);
@@ -83,8 +94,90 @@ export default function GLP1Companion() {
     try {
       const je = JSON.parse(localStorage.getItem('glp1JournalEntries')||'[]');
       if (Array.isArray(je)) setJournalEntries(je);
+      const te = JSON.parse(localStorage.getItem('glp1JourneyEntries')||'[]');
+      if (Array.isArray(te)) {
+        const migrated = te.map((e:any, idx:number)=> {
+          if (e.endWeight != null && e.weekNumber != null) return e;
+          // migrate legacy {date, weight}
+          return {
+            id: e.id || Math.random().toString(36).slice(2),
+            userId: e.userId || 'local',
+            weekNumber: idx + 1,
+            startWeight: e.weight || Math.round(weightKg*2.2046),
+            endWeight: e.weight || Math.round(weightKg*2.2046),
+            weightUnit: e.weightUnit || 'lbs',
+            medicationName: e.medicationName || '',
+            dosage: e.dosage || '',
+            notes: e.notes || '',
+            periodStartDate: e.date || undefined,
+            createdAt: e.createdAt || new Date().toISOString(),
+            updatedAt: e.updatedAt || new Date().toISOString(),
+          };
+        });
+        setTrackerEntries(migrated);
+        localStorage.setItem('glp1JourneyEntries', JSON.stringify(migrated));
+      }
     } catch {}
   }, []);
+
+  const saveTrackerEntries = (items: typeof trackerEntries) => {
+    setTrackerEntries(items);
+    localStorage.setItem('glp1JourneyEntries', JSON.stringify(items));
+  };
+
+  const sortedTracker = useMemo(() => {
+    return [...trackerEntries].sort((a,b)=> a.weekNumber - b.weekNumber);
+  }, [trackerEntries]);
+
+  const startingWeight = useMemo(() => {
+    if (sortedTracker.length) return sortedTracker[0].startWeight;
+    return Math.round(weightKg * 2.2046);
+  }, [sortedTracker, weightKg]);
+
+  const currentWeight = useMemo(() => {
+    if (sortedTracker.length) return sortedTracker[sortedTracker.length-1].endWeight;
+    return Math.round(weightKg * 2.2046);
+  }, [sortedTracker, weightKg]);
+
+  const lastDoseEntry = useMemo(() => {
+    return [...sortedTracker].reverse().find(e => (e.medicationName||'').trim() !== '');
+  }, [sortedTracker]);
+
+  const nextDoseText = useMemo(() => {
+    if (!nextDose) return 'Schedule not set';
+    const diff = new Date(nextDose).getTime() - Date.now();
+    if (diff <= 0) return 'Due now';
+    const days = Math.floor(diff/86400000);
+    if (days > 0) return `in ${days} day${days>1?'s':''}`;
+    const hours = Math.floor((diff%86400000)/3600000);
+    return `in ${hours}h`;
+  }, [nextDose]);
+
+  const generatePlan = () => {
+    const baseProtein = selectedDiet === 'High-Protein' ? 35 : 25;
+    const meals = [
+      { title:'Breakfast', items:[`Greek yogurt (${baseProtein}g protein)`, 'Berries', 'Honey drizzle'] },
+      { title:'Lunch', items:['Grilled chicken', 'Steamed rice or cauliflower rice', 'Cucumber salad'] },
+      { title:'Snack', items:['Cottage cheese', 'Apple slices'] },
+      { title:'Dinner', items:['Baked salmon', 'Mashed potatoes', 'Green beans'] },
+      { title:'Snack', items:['Protein shake', 'Banana'] },
+    ];
+    setPlanMeals(meals);
+    const groceries = ['Greek yogurt','Berries','Honey','Chicken breast','Rice','Cauliflower','Cucumber','Cottage cheese','Apples','Salmon','Potatoes','Green beans','Protein powder','Bananas','Water'];
+    setGroceryItems(groceries);
+    toast({ title:'New plan generated', description:`Diet: ${selectedDiet}` });
+    try {
+      const profile = {
+        id: 'local', age: 35, gender: 'male' as const,
+        height: 175, weight: weightKg || 75,
+        activityLevel: ActivityLevel.LIGHTLY_ACTIVE,
+        goal: NutritionGoal.MAINTENANCE,
+        dietaryRestrictions: ['glp1']
+      };
+      const res = calculateNutrition(profile);
+      setTargets({ calories: res.goalCalories, protein: res.macroBreakdown.protein as any, carbs: res.macroBreakdown.carbs as any, fat: res.macroBreakdown.fat as any });
+    } catch {}
+  };
 
   function formatNextDose(text?: string) {
     if (!text) return '--';
@@ -391,9 +484,10 @@ export default function GLP1Companion() {
           <TabsList className="flex w-full overflow-x-auto rounded-2xl bg-[#F5F3FF] border border-[#E9D5FF] px-2 py-2">
             <TabsTrigger value="dashboard" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><LayoutDashboard className="w-4 h-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="medication" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Pill className="w-4 h-4" /> Medication</TabsTrigger>
-            <TabsTrigger value="metrics" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Scale className="w-4 h-4" /> Weight & Metrics</TabsTrigger>
+            
             
             <TabsTrigger value="journal" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><NotebookPen className="w-4 h-4" /> Journal</TabsTrigger>
+            <TabsTrigger value="tracker" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><TrendingUp className="w-4 h-4" /> Tracker</TabsTrigger>
             <TabsTrigger value="nutrition" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Apple className="w-4 h-4" /> Nutrition</TabsTrigger>
             <TabsTrigger value="plans" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><UtensilsCrossed className="w-4 h-4" /> Meal Plans</TabsTrigger>
           </TabsList>
@@ -407,13 +501,10 @@ export default function GLP1Companion() {
                   <button onClick={() => setTab('medication')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='medication'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
                     <Pill className="w-4 h-4" /> Medication
                   </button>
-                  <button onClick={() => setTab('metrics')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='metrics'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
-                    <Scale className="w-4 h-4" /> Weight & Metrics
-                  </button>
                   
-                <button onClick={() => setTab('journal')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='journal'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
-                  <NotebookPen className="w-4 h-4" /> Journal
-                </button>
+                  
+                <button onClick={() => setTab('journal')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='journal'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}><NotebookPen className="w-4 h-4" /> Journal</button>
+                <button onClick={() => setTab('tracker')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='tracker'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}><TrendingUp className="w-4 h-4" /> Journey Tracker</button>
                 <button onClick={() => setTab('nutrition')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='nutrition'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
                   <Apple className="w-4 h-4" /> Nutrition
                 </button>
@@ -556,31 +647,7 @@ export default function GLP1Companion() {
             </div>
           </TabsContent>
 
-          <TabsContent value="metrics" className="pt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <CardHeader><CardTitle>Log Weight & Metrics</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div><div className="text-sm font-medium mb-2">Weight (kg)</div><Input type="number" inputMode="decimal" value={weightKg} onChange={(e)=>setWeightKg(parseFloat(e.target.value||'0'))} /></div>
-                  <div><div className="text-sm font-medium mb-2">Body fat %</div><Input type="number" inputMode="decimal" value={bodyFat} onChange={(e)=>setBodyFat(parseFloat(e.target.value||'0'))} /></div>
-                  <div><div className="text-sm font-medium mb-2">Lean mass (kg)</div><div className="font-bold mt-1">{leanMass}</div></div>
-                  <Button className="bg-indigo-600 text-white" onClick={()=>{
-                    const wkLabel = computeWeek(startDate);
-                    const wkNum = parseInt(String(wkLabel).replace(/\D/g,''));
-                    if (!wkNum || wkNum < 1) { toast({ title:'Set start date first' }); return; }
-                    const lbs = Math.round((weightKg || 0) * 2.2046);
-                    if (!lbs || lbs <= 0) { toast({ title:'Enter a valid weight' }); return; }
-                    saveWeightLog(wkNum, lbs);
-                    toast({ title:'Weight added', description:`Week ${wkNum}: ${lbs} lbs` });
-                  }}>Save Weight Entry</Button>
-                </CardContent>
-              </Card>
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <CardHeader><CardTitle>Weight Progress</CardTitle></CardHeader>
-                <CardContent className="p-6"><div className="text-sm text-muted-foreground">Add entries to see progress.</div></CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          
 
           
 
@@ -766,15 +833,172 @@ export default function GLP1Companion() {
             </div>
           </TabsContent>
 
-          <TabsContent value="plans" className="pt-0">
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-              <CardHeader className="flex items-center justify-between"><CardTitle>Auto-Generated Meal Plan</CardTitle><Button className="bg-indigo-600 text-white">Generate New Plan</Button></CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="text-sm text-muted-foreground">Generate to view plan.</div></CardContent>
-            </Card>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200"><CardHeader><CardTitle>Meal Plan Guidelines</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex items-start gap-3"><div className="w-2 h-2 bg-indigo-600 rounded-full mt-2"></div><div><div className="text-sm font-medium">High Protein Focus</div><div className="text-sm text-muted-foreground">Each meal contains 25-40g of protein</div></div></div><div className="flex items-start gap-3"><div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div><div><div className="text-sm font-medium">Easy to Digest</div><div className="text-sm text-muted-foreground">Low-fat, low-fiber options</div></div></div><div className="flex items-start gap-3"><div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div><div><div className="text-sm font-medium">Small Frequent Meals</div><div className="text-sm text-muted-foreground">3 meals + 2-3 snacks</div></div></div><div className="flex items-start gap-3"><div className="w-2 h-2 bg-orange-600 rounded-full mt-2"></div><div><div className="text-sm font-medium">Hydration Focus</div><div className="text-sm text-muted-foreground">Includes water-rich foods</div></div></div></CardContent></Card>
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200"><CardHeader><CardTitle>Protein-Rich Foods</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-4"><div><div className="text-sm font-semibold">Animal Proteins</div><ul className="text-sm text-muted-foreground space-y-1"><li>• Chicken breast</li><li>• Turkey</li><li>• White fish</li><li>• Greek yogurt</li><li>• Eggs</li><li>• Cottage cheese</li></ul></div><div><div className="text-sm font-semibold">Plant Proteins</div><ul className="text-sm text-muted-foreground space-y-1"><li>• Tofu</li><li>• Tempeh</li><li>• Lentils</li><li>• Protein powder</li><li>• Edamame</li><li>• Protein pasta</li></ul></div></CardContent></Card>
+          <TabsContent value="tracker" className="pt-0">
+            <div className="space-y-6">
+              <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-lg font-semibold">My GLP‑1 Journey Tracker</div>
+                      <div className="text-sm text-muted-foreground">Track your weight, GLP‑1 doses, and notes over time to see how your journey is progressing.</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Today’s Date</div>
+                      <div className="text-sm font-semibold">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><div className="text-xs text-gray-500">Current Weight</div><div className="text-3xl font-extrabold">{currentWeight} {sortedTracker[0]?.weightUnit||'lbs'}</div><div className={`text-xs ${currentWeight-startingWeight<0?'text-green-600':'text-red-600'}`}>{currentWeight-startingWeight<0?`↓ ${Math.abs(currentWeight-startingWeight)} lbs since start`:`↑ ${currentWeight-startingWeight} lbs since start`}</div></div><div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center"><TrendingUp className="w-4 h-4 text-indigo-600" /></div></div></CardContent></Card>
+                <Card className="bg-white rounded-2xl border border-gray-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><div className="text-xs text-gray-500">Last GLP‑1 Dose</div><div className="text-sm font-semibold">{lastDoseEntry?`${lastDoseEntry.medicationName} • ${lastDoseEntry.dosage}`:'—'}</div><div className="text-xs text-gray-600">Last dose: {lastDoseEntry? (lastDoseEntry.periodStartDate? new Date(lastDoseEntry.periodStartDate).toLocaleDateString(): '—') : '—'}</div><div className="text-xs text-indigo-600">Next dose: {nextDoseText}</div></div><div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center"><CalendarClock className="w-4 h-4 text-purple-600" /></div></div></CardContent></Card>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <Card className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-semibold">Journey Log</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={()=>{ saveTrackerEntries([]); }}>
+                          Clear
+                        </Button>
+                        <Button size="sm" className="bg-indigo-600 text-white" onClick={()=>{ setEditEntry({ id:'new', weekNumber: sortedTracker.length+1, startWeightText:'', endWeightText:'', weightUnit: (sortedTracker[0]?.weightUnit||'lbs') }); setAddOpen(true); }}><PlusCircle className="w-4 h-4 mr-1" /> Add entry</Button>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground mb-3">Starting weight: {sortedTracker.length? `${startingWeight} ${sortedTracker[0].weightUnit}` : '—'}</div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-gray-500">
+                            <th className="py-2 pr-3">Week / Period</th>
+                            <th className="py-2 pr-3">Start Weight</th>
+                            <th className="py-2 pr-3">End Weight</th>
+                            <th className="py-2 pr-3">Medication Name</th>
+                            <th className="py-2 pr-3">Dosage</th>
+                            <th className="py-2 pr-3">Notes</th>
+                            <th className="py-2 pr-3"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedTracker.map((e)=> (
+                            <tr key={e.id} className="border-t">
+                              <td className="py-2 pr-3">Week {e.weekNumber}</td>
+                              <td className="py-2 pr-3">{e.startWeight} {e.weightUnit}</td>
+                              <td className="py-2 pr-3">{e.endWeight} {e.weightUnit}</td>
+                              <td className="py-2 pr-3">{e.medicationName||'—'}</td>
+                              <td className="py-2 pr-3">{e.dosage||'—'}</td>
+                              <td className="py-2 pr-3 truncate max-w-[200px]" title={e.notes||''}>{e.notes||'—'}</td>
+                              <td className="py-2 pr-3">
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={()=>{ setEditEntry({ id:e.id, weekNumber:e.weekNumber, startWeight:e.startWeight, endWeight:e.endWeight, startWeightText:String(e.startWeight), endWeightText:String(e.endWeight), weightUnit:e.weightUnit, medicationName:e.medicationName, dosage:e.dosage, notes:e.notes, periodStartDate:e.periodStartDate }); setAddOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                                  <Button size="sm" variant="outline" onClick={()=>{ const next = trackerEntries.filter(x=>x.id!==e.id); saveTrackerEntries(next); }}><Trash2 className="w-4 h-4" /></Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {sortedTracker.length===0 && (
+                            <tr><td className="py-4 text-muted-foreground" colSpan={6}>No entries yet.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-semibold">Weight Trend</div>
+                      <Button size="sm" className="rounded-full bg-gradient-to-r from-[#6C4CEA] to-[#8B5CF6] text-white shadow" onClick={()=>{ setEditEntry(null); setAddOpen(true); }}>Log</Button>
+                    </div>
+                    <div className="h-64 rounded-xl bg-gradient-to-b from-[#F5F3FF] to-[#E9D5FF] p-3">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={sortedTracker.map(e=>({ x:`Week ${e.weekNumber}`, y:e.endWeight, med:e.medicationName, dose:e.dosage, notes:e.notes }))} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                          <XAxis dataKey="x" tick={{ fontSize: 11, fill: '#6B7280' }} tickMargin={8} />
+                          <YAxis domain={[160, 400]} tick={{ fontSize: 11, fill: '#6B7280' }} tickMargin={4} />
+                          <Tooltip 
+                            formatter={(value:any)=> [`${value} ${sortedTracker[0]?.weightUnit||'lbs'}`, 'End Weight']}
+                            labelFormatter={(label:any, payload:any)=> {
+                              const p = payload && payload[0] ? payload[0].payload : undefined;
+                              const extra = [] as string[];
+                              if (p?.med) extra.push(`${p.med}${p?.dose? ' • '+p.dose: ''}`);
+                              if (p?.notes) extra.push(String(p.notes).slice(0,40));
+                              return extra.length ? `${label} • ${extra.join(' • ')}` : label;
+                            }}
+                          />
+                          <Line type="monotone" dataKey="y" stroke="#6C4CEA" strokeWidth={3} dot={{ r: 3, stroke: '#6C4CEA', strokeWidth: 2 }} activeDot={{ r: 4 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
+
+            <Dialog open={addOpen} onOpenChange={(o)=>{ setAddOpen(o); if(!o) setEditEntry(null); }}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editEntry? 'Edit Entry' : 'Add Entry'}</DialogTitle>
+                  <DialogDescription></DialogDescription>
+                </DialogHeader>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="trk-week">Week Number</Label>
+                    <Input id="trk-week" type="number" min={1} value={editEntry?.weekNumber ?? (sortedTracker.length+1)} onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', startWeight:0, endWeight:0, weightUnit:'lbs' }), weekNumber: parseInt(e.target.value||'1') }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="trk-period">Period Start Date (optional)</Label>
+                    <Input id="trk-period" type="date" value={editEntry?.periodStartDate || ''} onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', startWeight:0, endWeight:0, weightUnit:'lbs' }), periodStartDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="trk-start">Start Weight</Label>
+                    <Input id="trk-start" type="number" inputMode="decimal" value={editEntry?.startWeightText ?? ''} placeholder="e.g., 180" onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', weightUnit:'lbs' }), startWeightText: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="trk-end">End Weight</Label>
+                    <Input id="trk-end" type="number" inputMode="decimal" value={editEntry?.endWeightText ?? ''} placeholder="e.g., 175" onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', weightUnit:'lbs' }), endWeightText: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="trk-med">Medication Name</Label>
+                    <Input id="trk-med" value={editEntry?.medicationName || ''} onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', startWeight:0, endWeight:0, weightUnit:'lbs' }), medicationName:e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="trk-dose">Dosage</Label>
+                    <Input id="trk-dose" value={editEntry?.dosage || ''} onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', startWeight:0, endWeight:0, weightUnit:'lbs' }), dosage:e.target.value }))} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="trk-notes">Notes</Label>
+                    <Textarea id="trk-notes" rows={3} value={editEntry?.notes || ''} onChange={(e)=> setEditEntry(prev=> ({ ...(prev||{ id:'new', startWeight:0, endWeight:0, weightUnit:'lbs' }), notes:e.target.value }))} />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <Button variant="outline" className="flex-1" onClick={()=>{ setAddOpen(false); setEditEntry(null); }}>Cancel</Button>
+                  <Button className="bg-indigo-600 text-white flex-1" onClick={()=>{
+                    const { startWeightText, endWeightText } = editEntry || {};
+                    const startVal = startWeightText!=null && startWeightText!=='' ? parseFloat(startWeightText) : undefined;
+                    const endVal = endWeightText!=null && endWeightText!=='' ? parseFloat(endWeightText) : undefined;
+                    if (!Number.isFinite(startVal || NaN) || !Number.isFinite(endVal || NaN)) {
+                      toast({ title:'Enter valid weights' });
+                      return;
+                    }
+                    const now = new Date().toISOString();
+                    const base = { ...(editEntry||{ id:'new', weekNumber: sortedTracker.length+1, weightUnit:'lbs' }), startWeight: startVal!, endWeight: endVal! };
+                    if (!base.id || base.id==='new') base.id = Math.random().toString(36).slice(2);
+                    const next = trackerEntries.some(e=>e.id===base.id)
+                      ? trackerEntries.map(e=> e.id===base.id ? { ...e, ...base, updatedAt: now } : e)
+                      : [{ id: base.id, userId: 'local', weekNumber: base.weekNumber, startWeight: base.startWeight, endWeight: base.endWeight, weightUnit: base.weightUnit||'lbs', medicationName: base.medicationName||'', dosage: base.dosage||'', notes: base.notes||'', periodStartDate: base.periodStartDate, createdAt: now, updatedAt: now }, ...trackerEntries];
+                    saveTrackerEntries(next);
+                    setAddOpen(false); setEditEntry(null);
+                  }}>{editEntry? 'Save Changes' : 'Add Entry'}</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+
+          <TabsContent value="plans" className="pt-0">
+            <SmartMealGenie />
           </TabsContent>
             </div>
           </div>

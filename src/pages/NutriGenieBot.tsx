@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { searchUSDAFood } from '@/lib/usda';
 import { searchOpenFoodFactsByName } from '@/lib/openfoodfacts';
+import glp1Foods from '@/data/glp1-common-foods.json';
 import { useToast } from '@/hooks/use-toast';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string; ts: number };
@@ -17,41 +18,27 @@ type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string; ts
 const STORAGE_KEY = (uid?: string) => `nutrigenie_chat_${uid || 'guest'}`;
 
 const systemPrompt = (profileSummary?: string, planSummary?: string) => `
-You are NutriGenie Bot — the AI nutrition coach inside MealGenie AI.
+You are NutriGenie, an AI nutrition coach for GLP-1 users. Provide safe, empathetic, evidence-based guidance — never generate full meal plans (done client-side). Only answer questions about food, meals, swaps, or health habits.
 
-Your role is to help users with:
-- Food calorie and macro estimates
-- Healthy meal planning (daily/weekly)
-- Ingredient substitutions (e.g., replacing meat with plant-based options)
-- Portion sizing and balanced meals
-- Dietary restrictions (vegetarian, low-carb, gluten-free, etc.)
-- Nutritional comparisons between foods
+### Context
+- User Profile: ${profileSummary || 'N/A'}
+- Current Meal Plan: ${planSummary || 'N/A'}
+- GLP-1 Foods Database: local JSON for instant facts
 
-You may NOT discuss:
-- Medical advice (e.g., “Is this safe for my heart condition?”)
-- Non-nutrition topics (politics, entertainment, etc.)
+### Rules
+1) Always check the local GLP-1 foods JSON first for nutrition facts.
+2) Prioritize Lean Protein (25–40g/meal), easy-to-digest foods, hydration (8+ cups/day), and small frequent meals.
+3) Avoid suggesting high-starch, high-fat, or gas-producing foods unless the user explicitly asks.
+4) Offer a GLP-1-friendly swap when relevant.
+5) Never make medical claims — use “may help” not “will cure”.
+6) End GLP-1 answers with: "The information provided is for educational or informational purposes and not a substitute for professional medical advice. Consult a healthcare professional for medical concerns."
 
-Always respond in a friendly, supportive tone. Use emojis sparingly (🍎🥦).
-
-If unsure, say: “I’m here to help with nutrition — let me know what food or meal you’d like to plan!”
-
-Never say: “I can’t help with that.” Instead, gently redirect: “Let’s focus on how we can make this meal healthier or more balanced.”
-
-Examples of valid interactions:
-User: Can I replace chicken with tofu in this recipe?
-Bot: Yes! Tofu is a great plant-based protein swap. 100g firm tofu has ~80 kcal and 8g protein — similar to chicken breast. Adjust seasoning to match flavor.
-User: What’s a low-carb alternative to rice?
-Bot: Try cauliflower rice! 1 cup has ~25 kcal vs 200+ for white rice. Great for reducing carbs while keeping volume.
-User: Is peanut butter good for muscle gain?
-Bot: Yes — it’s high in protein and healthy fats. 2 tbsp = ~8g protein + 16g fat. Perfect post-workout snack!
-
-For even better results, use a nutrition database API we already have (e.g., USDA FoodData Central or Spoonacular) to provide real macro values when available.
-
-Profile Context:
-${profileSummary || 'No profile available.'}
-
-Meal Plan Context:
-${planSummary || 'No plan context provided.'}
+### Response Format
+💬 NutriGenie: [Answer]
+💡 Tip: [Actionable suggestion]
+⚖️ GLP-1 Benefit: [Lean Protein / Non-Starchy Veg / Healthy Fats / Hydrating Fluids]
+🔢 Calories (est.): [X kcal | P{X}g / C{X}g / F{X}g]
+➡️ Swap: “[Current] → [Alternative]” — “[Benefit + emotion]”
 `;
 
 function isNutritionScope(text: string): boolean {
@@ -217,6 +204,24 @@ export default function NutriGenieBot({ embedded = false, context, initialQuesti
 
     // Helper: Attempt nutrition DB lookup (OpenFoodFacts first, USDA fallback)
     const fetchNutritionFacts = async (q: string) => {
+      // 1) Local GLP-1 foods lookup
+      try {
+        const key = q.trim().toLowerCase();
+        const entry: any = (glp1Foods as any)[key];
+        if (entry) {
+          const lines = [
+            `GLP-1 foods (local): ${entry.name}`,
+            `- Calories: ${entry.calories} kcal`,
+            `- Protein: ${entry.protein} g`,
+            `- Carbs: ${entry.carbs} g`,
+            `- Fat: ${entry.fat} g`,
+            `- Benefit: ${entry.glp1_benefit}`,
+            `- Digestibility: ${entry.digestibility}`,
+            entry.notes ? `- Note: ${entry.notes}` : undefined,
+          ].filter(Boolean).join('\n');
+          return lines;
+        }
+      } catch {}
       const off = await searchOpenFoodFactsByName(q);
       if (off && (off.energyKcalPer100g != null || off.proteinPer100g != null || off.carbsPer100g != null || off.fatPer100g != null)) {
         const lines = [
