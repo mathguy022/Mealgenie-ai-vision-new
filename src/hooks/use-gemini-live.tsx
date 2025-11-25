@@ -52,6 +52,12 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
       // Make sure video is playing and has dimensions
       if (video.videoWidth === 0 || video.videoHeight === 0) {
         console.log('Video dimensions not ready:', video.videoWidth, 'x', video.videoHeight);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setIsStreaming(false);
+        setIsAnalyzing(false);
         reject(new Error('Video is not ready - no dimensions'));
         return;
       }
@@ -59,6 +65,12 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
       // Check if video is actually playing
       if (video.paused || video.ended) {
         console.log('Video is not playing - paused:', video.paused, 'ended:', video.ended);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setIsStreaming(false);
+        setIsAnalyzing(false);
         reject(new Error('Video is not playing'));
         return;
       }
@@ -152,15 +164,20 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred: ' + String(err));
       console.error('Error in processFrame:', error);
       setError(error);
-      if (options.onError) {
+      if (options.onError && !/Video is not playing|Video is not ready/i.test(error.message)) {
         options.onError(error);
       }
-      // Retry up to 2 times on error
-      if (retryCount < 2) {
-        console.log('Retrying processFrame, attempt:', retryCount + 1);
-        setTimeout(() => processFrame(retryCount + 1), 2000);
+      // Do not retry when video is not playing/ready
+      if (/Video is not playing|Video is not ready/i.test(error.message)) {
+        console.log('Video error detected, not retrying processFrame');
       } else {
-        console.log('Max retries reached, giving up on this frame');
+        // Retry up to 2 times on other errors
+        if (retryCount < 2) {
+          console.log('Retrying processFrame, attempt:', retryCount + 1);
+          setTimeout(() => processFrame(retryCount + 1), 2000);
+        } else {
+          console.log('Max retries reached, giving up on this frame');
+        }
       }
     } finally {
       setIsAnalyzing(false);
@@ -194,7 +211,14 @@ export function useGeminiLive(options: UseGeminiLiveOptions) {
     // Then process frames at regular intervals
     const interval = options.analysisInterval || 3000; // Default to 3 seconds for better responsiveness
     console.log('Setting up interval for frame processing every', interval, 'ms');
-    intervalRef.current = setInterval(processFrame, interval);
+    intervalRef.current = setInterval(() => {
+      const v = videoRef.current;
+      if (!v) return;
+      if (v.paused || v.ended || v.videoWidth === 0 || v.videoHeight === 0) {
+        return;
+      }
+      processFrame();
+    }, interval);
 
     return () => {
       stopStreaming();

@@ -68,7 +68,7 @@ const BarcodeResult = () => {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate('/barcode-scanner')}>
+            <Button variant="ghost" onClick={() => navigate('/smart-food-scanners?mode=barcode')}>
               <ArrowLeft className="w-5 h-5 mr-2" />
               Scan Again
             </Button>
@@ -192,7 +192,7 @@ const BarcodeResult = () => {
           </Card>
         )}
 
-        <Button onClick={() => navigate('/barcode-scanner')} className="w-full" variant="outline">
+        <Button onClick={() => navigate('/smart-food-scanners?mode=barcode')} className="w-full" variant="outline">
           Scan Another Item
         </Button>
       </main>

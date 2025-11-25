@@ -15,6 +15,7 @@ import FoodPreview from "./pages/FoodPreview";
 import FoodScannerLive from "./pages/FoodScannerLive";
 import EnhancedFoodAnalyzer from "./pages/EnhancedFoodAnalyzer";
 import BarcodeScanner from "./pages/BarcodeScanner";
+import SmartFoodScanners from "./pages/SmartFoodScanners";
 import BarcodeResult from "./pages/BarcodeResult";
 import NotFound from "./pages/NotFound";
 import Layout from "@/components/Layout";
@@ -23,6 +24,7 @@ import NutriGenieBot from "./pages/NutriGenieBot";
 import SmartMealGenie from "./pages/SmartMealGenie";
 import BMICalculator from "./pages/BMICalculator";
 import SmartCaloriesCalculator from "./pages/SmartCaloriesCalculator";
+import SmartBodyCalculator from "./pages/SmartBodyCalculator";
 import SecurityPrivacy from "./pages/SecurityPrivacy";
 import GLP1Companion from "./pages/GLP1Companion";
 
@@ -61,16 +63,18 @@ const App = () => (
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/scan" element={<ProtectedRoute><FoodAnalyzer /></ProtectedRoute>} />
                 <Route path="/food-analyzer" element={<ProtectedRoute><FoodAnalyzer /></ProtectedRoute>} />
-                <Route path="/barcode-scanner" element={<ProtectedRoute><BarcodeScanner /></ProtectedRoute>} />
+                <Route path="/smart-food-scanners" element={<ProtectedRoute><SmartFoodScanners /></ProtectedRoute>} />
+                <Route path="/barcode-scanner" element={<Navigate to="/smart-food-scanners?mode=barcode" replace />} />
                 <Route path="/barcode-result/:barcode" element={<ProtectedRoute><BarcodeResult /></ProtectedRoute>} />
                 <Route path="/food-preview" element={<ProtectedRoute><FoodPreview /></ProtectedRoute>} />
-                <Route path="/scan-live" element={<ProtectedRoute><FoodScannerLive /></ProtectedRoute>} />
+                <Route path="/scan-live" element={<Navigate to="/smart-food-scanners?mode=live" replace />} />
                 <Route path="/gemini-test" element={<ProtectedRoute><GeminiTest /></ProtectedRoute>} />
                 <Route path="/enhanced-food-analyzer" element={<ProtectedRoute><EnhancedFoodAnalyzer /></ProtectedRoute>} />
                 <Route path="/nutrigenie" element={<ProtectedRoute><NutriGenieBot /></ProtectedRoute>} />
                 <Route path="/smart-meal-genie" element={<ProtectedRoute><SmartMealGenie /></ProtectedRoute>} />
-                <Route path="/bmi-calculator" element={<ProtectedRoute><BMICalculator /></ProtectedRoute>} />
-                <Route path="/smart-calories-calculator" element={<ProtectedRoute><SmartCaloriesCalculator /></ProtectedRoute>} />
+                <Route path="/smart-body-calculator" element={<ProtectedRoute><SmartBodyCalculator /></ProtectedRoute>} />
+                <Route path="/bmi-calculator" element={<Navigate to="/smart-body-calculator" replace />} />
+                <Route path="/smart-calories-calculator" element={<Navigate to="/smart-body-calculator" replace />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

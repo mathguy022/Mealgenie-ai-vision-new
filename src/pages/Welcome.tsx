@@ -177,17 +177,10 @@ const Welcome = () => {
               },
               {
                 icon: Waves,
-                title: 'Live Scanner',
-                subtitle: 'Analyze meals in real time — no photo needed.',
-                gradient: 'from-purple-500 to-fuchsia-600',
-                to: '/scan-live',
-              },
-              {
-                icon: Scan,
-                title: 'Barcode Scanner',
-                subtitle: 'Scan packaged foods for verified nutrition facts per serving.',
+                title: 'AI Smart Food Scanners',
+                subtitle: 'Live camera & barcode food analysis',
                 gradient: 'from-sky-500 to-teal-500',
-                to: '/barcode-scanner',
+                to: '/smart-food-scanners',
               },
               {
                 icon: Bot,

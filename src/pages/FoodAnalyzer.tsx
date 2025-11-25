@@ -329,6 +329,12 @@ const FoodAnalyzer = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle>Choose Mode</CardTitle>
+            <CardDescription>Switch between Food Scanner and Calorie Calculator</CardDescription>
+          </CardHeader>
+        </Card>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="scanner" className="flex items-center gap-2">

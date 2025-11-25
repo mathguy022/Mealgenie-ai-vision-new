@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Pill, Sparkles, Bot as BotIcon, Syringe, LayoutDashboard, Scale, AlertCircle, Apple, UtensilsCrossed, Bell, TrendingUp, FlaskConical, Plus, CalendarClock } from 'lucide-react';
+import { Activity, Pill, Sparkles, Bot as BotIcon, Syringe, LayoutDashboard, Scale, Apple, UtensilsCrossed, Bell, TrendingUp, FlaskConical, Plus, CalendarClock, NotebookPen } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { RadialBarChart, RadialBar, PolarAngleAxis, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -38,7 +38,21 @@ export default function GLP1Companion() {
   const [checkinMood, setCheckinMood] = useState<string>('good');
   const [checkinSelections, setCheckinSelections] = useState<string[]>([]);
   const [energyLevel, setEnergyLevel] = useState<number>(5);
-  const [tab, setTab] = useState<'dashboard'|'medication'|'metrics'|'effects'|'nutrition'|'plans'>('dashboard');
+  const [tab, setTab] = useState<'dashboard'|'medication'|'metrics'|'nutrition'|'plans'|'journal'>('dashboard');
+  const [journalDate, setJournalDate] = useState<string>(()=> new Date().toISOString().split('T')[0]);
+  const [journalTime, setJournalTime] = useState<string>(()=> new Date().toTimeString().slice(0,5));
+  const [journalText, setJournalText] = useState<string>('');
+  const [journalMood, setJournalMood] = useState<'sad'|'meh'|'okay'|'happy'|'great'>('okay');
+  const [journalSymptoms, setJournalSymptoms] = useState<string[]>([]);
+  const [customSymptom, setCustomSymptom] = useState<string>('');
+  const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
+  const [intakeDose, setIntakeDose] = useState<string>('');
+  const [intakeTime, setIntakeTime] = useState<string>('');
+  const [intakeSite, setIntakeSite] = useState<string>('Abdomen');
+  const [otherDetails, setOtherDetails] = useState<string>('');
+  const [journalEntries, setJournalEntries] = useState<Array<any>>([]);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [aiTips, setAiTips] = useState<string[]>([]);
 
   const leanMass = useMemo(() => calcLeanMassKg(weightKg || 0, bodyFat || 0), [weightKg, bodyFat]);
   const recommendedProtein = useMemo(() => Math.round(leanMass * 1.8), [leanMass]);
@@ -66,6 +80,10 @@ export default function GLP1Companion() {
     if (id) setInjectionDay(parseInt(id));
     if (rt) setReminderTime(rt);
     if (ih) setInjectionHistory(JSON.parse(ih));
+    try {
+      const je = JSON.parse(localStorage.getItem('glp1JournalEntries')||'[]');
+      if (Array.isArray(je)) setJournalEntries(je);
+    } catch {}
   }, []);
 
   function formatNextDose(text?: string) {
@@ -133,6 +151,31 @@ export default function GLP1Companion() {
   const [logOpen, setLogOpen] = useState(false);
   const [logWeek, setLogWeek] = useState<string>('');
   const [logWeight, setLogWeight] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      const key = 'glp1WeightLogs';
+      const raw = JSON.parse(localStorage.getItem(key) || '[]');
+      if (Array.isArray(raw) && raw.length > 0) {
+        const mapped = raw
+          .map((r: any) => ({ week: `Week ${r.week}`, lbs: Number(r.lbs) }))
+          .sort((a,b)=> parseInt(a.week.replace(/\D/g,'')) - parseInt(b.week.replace(/\D/g,'')));
+        setChartData(mapped);
+      }
+    } catch {}
+  }, []);
+
+  const saveWeightLog = (weekNum: number, lbs: number) => {
+    const key = 'glp1WeightLogs';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const next = [
+      ...existing.filter((p: any) => p.week !== weekNum),
+      { week: weekNum, lbs, ts: new Date().toISOString() },
+    ].sort((a:any,b:any)=> a.week - b.week);
+    localStorage.setItem(key, JSON.stringify(next));
+    const mapped = next.map((r:any)=> ({ week: `Week ${r.week}`, lbs: Number(r.lbs) }));
+    setChartData(mapped);
+  };
 
   const markDoseComplete = () => {
     const ns = nextSite(lastSite);
@@ -333,8 +376,7 @@ export default function GLP1Companion() {
               const lbs = parseFloat(logWeight || '0');
               if (!Number.isFinite(lbs) || lbs <= 0) { toast({ title:'Enter a valid weight' }); return; }
               const wk = `Week ${w}`;
-              const next = [...chartData.filter(p=>p.week!==wk), { week: wk, lbs }].sort((a,b)=>parseInt(a.week.replace(/\D/g,'')) - parseInt(b.week.replace(/\D/g,'')));
-              setChartData(next);
+              saveWeightLog(w, lbs);
               setLogOpen(false);
               setLogWeek('');
               setLogWeight('');
@@ -350,7 +392,8 @@ export default function GLP1Companion() {
             <TabsTrigger value="dashboard" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><LayoutDashboard className="w-4 h-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="medication" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Pill className="w-4 h-4" /> Medication</TabsTrigger>
             <TabsTrigger value="metrics" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Scale className="w-4 h-4" /> Weight & Metrics</TabsTrigger>
-            <TabsTrigger value="effects" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><AlertCircle className="w-4 h-4" /> Side Effects</TabsTrigger>
+            
+            <TabsTrigger value="journal" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><NotebookPen className="w-4 h-4" /> Journal</TabsTrigger>
             <TabsTrigger value="nutrition" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><Apple className="w-4 h-4" /> Nutrition</TabsTrigger>
             <TabsTrigger value="plans" className="px-4 py-2 text-base text-[#6B7280] flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#6C4CEA] data-[state=active]:font-bold data-[state=active]:shadow"><UtensilsCrossed className="w-4 h-4" /> Meal Plans</TabsTrigger>
           </TabsList>
@@ -367,12 +410,13 @@ export default function GLP1Companion() {
                   <button onClick={() => setTab('metrics')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='metrics'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
                     <Scale className="w-4 h-4" /> Weight & Metrics
                   </button>
-                  <button onClick={() => setTab('effects')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='effects'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
-                    <AlertCircle className="w-4 h-4" /> Side Effects
-                  </button>
-                  <button onClick={() => setTab('nutrition')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='nutrition'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
-                    <Apple className="w-4 h-4" /> Nutrition
-                  </button>
+                  
+                <button onClick={() => setTab('journal')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='journal'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                  <NotebookPen className="w-4 h-4" /> Journal
+                </button>
+                <button onClick={() => setTab('nutrition')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='nutrition'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
+                  <Apple className="w-4 h-4" /> Nutrition
+                </button>
                   <button onClick={() => setTab('plans')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base ${tab==='plans'?'bg-[#6C4CEA] text-white font-bold shadow':'hover:bg-white/60 text-[#6C4CEA]'}`}>
                     <UtensilsCrossed className="w-4 h-4" /> Meal Plans
                   </button>
@@ -520,6 +564,15 @@ export default function GLP1Companion() {
                   <div><div className="text-sm font-medium mb-2">Weight (kg)</div><Input type="number" inputMode="decimal" value={weightKg} onChange={(e)=>setWeightKg(parseFloat(e.target.value||'0'))} /></div>
                   <div><div className="text-sm font-medium mb-2">Body fat %</div><Input type="number" inputMode="decimal" value={bodyFat} onChange={(e)=>setBodyFat(parseFloat(e.target.value||'0'))} /></div>
                   <div><div className="text-sm font-medium mb-2">Lean mass (kg)</div><div className="font-bold mt-1">{leanMass}</div></div>
+                  <Button className="bg-indigo-600 text-white" onClick={()=>{
+                    const wkLabel = computeWeek(startDate);
+                    const wkNum = parseInt(String(wkLabel).replace(/\D/g,''));
+                    if (!wkNum || wkNum < 1) { toast({ title:'Set start date first' }); return; }
+                    const lbs = Math.round((weightKg || 0) * 2.2046);
+                    if (!lbs || lbs <= 0) { toast({ title:'Enter a valid weight' }); return; }
+                    saveWeightLog(wkNum, lbs);
+                    toast({ title:'Weight added', description:`Week ${wkNum}: ${lbs} lbs` });
+                  }}>Save Weight Entry</Button>
                 </CardContent>
               </Card>
               <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -529,54 +582,7 @@ export default function GLP1Companion() {
             </div>
           </TabsContent>
 
-          <TabsContent value="effects" className="pt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <CardHeader><CardTitle>Log Side Effect</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div><div className="text-sm font-medium mb-2">Date & Time</div><Input type="datetime-local" /></div>
-                  <div>
-                    <div className="text-sm font-medium mb-2">Side Effect Type</div>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                      <option value="nausea">Nausea</option>
-                      <option value="vomiting">Vomiting</option>
-                      <option value="diarrhea">Diarrhea</option>
-                      <option value="constipation">Constipation</option>
-                      <option value="headache">Headache</option>
-                      <option value="fatigue">Fatigue</option>
-                      <option value="dizziness">Dizziness</option>
-                      <option value="injection_site_reaction">Injection Site Reaction</option>
-                      <option value="heartburn">Heartburn/GERD</option>
-                      <option value="bloating">Bloating</option>
-                      <option value="loss_appetite">Loss of Appetite</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium mb-2">Severity</div>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                      <option value="mild">Mild - Noticeable but not bothersome</option>
-                      <option value="moderate">Moderate - Bothersome but manageable</option>
-                      <option value="severe">Severe - Significantly impacts daily life</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium mb-2">Notes (optional)</div>
-                    <Textarea rows={3} placeholder="Additional details about the side effect..." />
-                  </div>
-                  <Button className="bg-indigo-600 text-white">Log Side Effect</Button>
-                </CardContent>
-              </Card>
-              <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <CardHeader><CardTitle>Side Effect History</CardTitle></CardHeader>
-                <CardContent className="space-y-3 max-h-96 overflow-y-auto"><div className="text-sm text-muted-foreground">No side effects logged yet.</div></CardContent>
-              </Card>
-            </div>
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mt-8">
-              <CardHeader><CardTitle>Side Effect Summary</CardTitle></CardHeader>
-              <CardContent><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><div className="text-sm text-muted-foreground col-span-full">No side effects to summarize.</div></div></CardContent>
-            </Card>
-          </TabsContent>
+          
 
           <TabsContent value="nutrition" className="pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -613,6 +619,151 @@ export default function GLP1Companion() {
               <CardHeader><CardTitle>7-Day Nutrition Trends</CardTitle></CardHeader>
               <CardContent className="p-6"><div className="text-sm text-muted-foreground">Add entries to see trends.</div></CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="journal" className="pt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                {journalEntries.length===0 && (
+                  <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <CardHeader>
+                      <CardTitle>Start your GLP‑1 story</CardTitle>
+                      <CardDescription>Logging just 1–2 minutes a day helps spot patterns and side effects early.</CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
+                <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+                  <CardHeader>
+                    <CardTitle>How are you feeling today, John?</CardTitle>
+                    <CardDescription>Log your day, side effects, and wins so your GLP‑1 journey stays on track.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm font-medium mb-2">Date</div>
+                        <Input type="date" value={journalDate} onChange={(e)=>setJournalDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium mb-2">Time</div>
+                        <Input type="time" value={journalTime} onChange={(e)=>setJournalTime(e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Journal Entry</div>
+                      <Textarea rows={6} placeholder="Write about your meals, energy, side effects, mood, and anything else about today…" value={journalText} onChange={(e)=>setJournalText(e.target.value)} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Today’s Mood</div>
+                      <div className="flex items-center gap-2">
+                        {[{k:'sad',e:'😞'},{k:'meh',e:'😐'},{k:'okay',e:'🙂'},{k:'happy',e:'😊'},{k:'great',e:'🤩'}].map(m=> (
+                          <button key={m.k} onClick={()=>setJournalMood(m.k as any)} className={`px-3 py-2 rounded-lg border ${journalMood===m.k?'border-[#6C4CEA] bg-[#F5F3FF]':'border-gray-200 bg-white'}`}>{m.e}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+                      <CardHeader>
+                        <CardTitle className="text-base">Smart Journal Tools</CardTitle>
+                        <CardDescription>Use AI to summarize and get tips</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="text-xs text-muted-foreground">Optional: use AI before saving.</div>
+                        <div className="flex gap-3">
+                          <Button variant="outline" onClick={()=>{
+                            const moodMap:{[k:string]:string}={sad:'low',meh:'neutral',okay:'okay',happy:'good',great:'great'};
+                            const summary = `Entry on ${journalDate} at ${journalTime}. Mood: ${moodMap[journalMood]}. Symptoms: ${journalSymptoms.join(', ')||'none'}. Dose: ${intakeDose||'—'} at ${intakeTime||'—'} (${intakeSite}). Notes: ${journalText.slice(0,180)}${journalText.length>180?'…':''}`;
+                            setAiSummary(summary);
+                          }}>Summarize my entry</Button>
+                          <Button variant="outline" onClick={()=>{
+                            const tips = [
+                              'Watch hydration on days with appetite change',
+                              'Note any relation between injection time and nausea',
+                              'Track sleep quality; it may affect hunger',
+                              'Consider protein target on active days'
+                            ];
+                            setAiTips(tips);
+                          }}>What should I watch for?</Button>
+                        </div>
+                        {aiSummary && (<div className="text-sm bg-muted/40 p-3 rounded">{aiSummary}</div>)}
+                        {aiTips.length>0 && (
+                          <div className="text-sm bg-muted/40 p-3 rounded">
+                            <ul className="list-disc pl-5 space-y-1">
+                              {aiTips.map((t,i)=>(<li key={i}>{t}</li>))}
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <div className="flex justify-end gap-3">
+                      <Button variant="outline" onClick={()=>{
+                        setJournalText(''); setAiSummary(''); setAiTips([]);
+                      }}>Cancel</Button>
+                      <Button className="bg-indigo-600 text-white" onClick={()=>{
+                        const entry={date:journalDate,time:journalTime,text:journalText,mood:journalMood,symptoms:journalSymptoms,intake:{dose:intakeDose,time:intakeTime,site:intakeSite},other:otherDetails};
+                        const next=[entry,...journalEntries];
+                        setJournalEntries(next);
+                        localStorage.setItem('glp1JournalEntries',JSON.stringify(next));
+                        toast({ title:'Journal entry saved' });
+                        setJournalText(''); setAiSummary(''); setAiTips([]);
+                      }}>Save Entry</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="space-y-6">
+                <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+                  <CardHeader>
+                    <CardTitle>Symptoms & Side Effects</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {['Nausea','Vomiting','Constipation','Diarrhea','Headache','Fatigue','Dizziness','Appetite change','Injection site pain'].map(s=> (
+                        <button key={s} onClick={()=>{
+                          setJournalSymptoms(prev=> prev.includes(s)? prev.filter(x=>x!==s): [...prev,s]);
+                        }} className={`px-3 py-1 rounded-full text-sm border ${journalSymptoms.includes(s)?'border-[#6C4CEA] bg-[#F5F3FF]':'border-gray-200 bg-white'}`}>{s}</button>
+                      ))}
+                      <button onClick={()=> setShowCustomInput(true)} className="px-3 py-1 rounded-full text-sm border border-gray-200 bg-white">Add custom symptom</button>
+                    </div>
+                    {showCustomInput && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input placeholder="Type a symptom name…" value={customSymptom} onChange={(e)=>setCustomSymptom(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter'){ const s=customSymptom.trim(); if(s){ setJournalSymptoms(prev=>[...prev,s]); setCustomSymptom(''); setShowCustomInput(false);} } }} className="h-8" />
+                        <Button size="sm" onClick={()=>{ const s=customSymptom.trim(); if(s){ setJournalSymptoms(prev=>[...prev,s]); setCustomSymptom(''); setShowCustomInput(false);} }}>Add</Button>
+                        <Button size="sm" variant="link" onClick={()=>{ setShowCustomInput(false); setCustomSymptom(''); }}>Cancel</Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+                  <CardHeader>
+                    <CardTitle>Medication Intake</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <div className="text-sm font-medium mb-2">Dose</div>
+                      <Input placeholder="e.g., 1.0 mg" value={intakeDose} onChange={(e)=>setIntakeDose(e.target.value)} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Time of injection</div>
+                      <Input type="time" value={intakeTime} onChange={(e)=>setIntakeTime(e.target.value)} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Injection site</div>
+                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" value={intakeSite} onChange={(e)=>setIntakeSite(e.target.value)}>
+                        {['Abdomen','Thigh','Arm','Other'].map(opt=> (<option key={opt} value={opt}>{opt}</option>))}
+                      </select>
+                    </div>
+                    <div className="text-xs text-muted-foreground">Helps track whether side effects relate to dose changes.</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+                  <CardHeader>
+                    <CardTitle>Other Relevant Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea rows={4} placeholder="e.g., food intake, exercise, hydration, sleep, stress level…" value={otherDetails} onChange={(e)=>setOtherDetails(e.target.value)} />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="plans" className="pt-0">

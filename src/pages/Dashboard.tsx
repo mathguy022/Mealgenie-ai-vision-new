@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2, Flame, Pill } from 'lucide-react';
+import { Camera, TrendingUp, Apple, LogOut, User, Sparkles, Scan, Bot, Wand2, Flame, Pill, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import WeeklyMeasurements from '@/components/WeeklyMeasurements';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -223,17 +223,17 @@ const Dashboard = () => {
           </Card>
 
           <Card
-            className="cursor-pointer hover:shadow-lg transition-smooth border-purple-500/20 hover:border-purple-500"
-            onClick={() => navigate('/scan-live')}
+            className="cursor-pointer hover:shadow-lg transition-smooth border-sky-500/20 hover:border-sky-500"
+            onClick={() => navigate('/smart-food-scanners')}
           >
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center">
+                  <Scan className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">Live Scanner</h3>
-                  <p className="text-sm text-muted-foreground">Real-time food analysis</p>
+                  <h3 className="font-bold text-lg">AI Smart Food Scanners</h3>
+                  <p className="text-sm text-muted-foreground">Live camera & barcode food analysis</p>
                 </div>
               </div>
             </CardContent>
@@ -280,62 +280,21 @@ const Dashboard = () => {
           </Card>
 
           {/* Barcode Scanner */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Card
-                className="relative cursor-pointer hover:shadow-lg transition-smooth border-sky-500/20 hover:border-sky-500"
-                onClick={() => navigate('/barcode-scanner')}
-              >
-                <span className="absolute right-3 top-3">
-                  <Badge className="bg-sky-500/20 text-sky-400 border-sky-500/30">NEW</Badge>
-                </span>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center">
-                      <Scan className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">Barcode Scanner</h3>
-                      <p className="text-sm text-muted-foreground">Scan food packaging for instant nutrition info.</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TooltipTrigger>
-            <TooltipContent>Scan any packaged food barcode.</TooltipContent>
-          </Tooltip>
+          {/* Barcode Scanner card removed; included in AI Smart Food Scanners */}
 
-          {/* BMI Calculator */}
-          <Card
-            className="cursor-pointer hover:shadow-lg transition-smooth border-rose-500/20 hover:border-rose-500"
-            onClick={() => navigate('/smart-calories-calculator')}
-          >
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
-                  <Flame className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Smart Calories Calculator</h3>
-                  <p className="text-sm text-muted-foreground">Estimate food calories by weight</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* BMI Calculator */}
+          {/* Smart AI Body Calculator (combined) */}
           <Card
             className="cursor-pointer hover:shadow-lg transition-smooth border-indigo-500/20 hover:border-indigo-500"
-            onClick={() => navigate('/bmi-calculator')}
+            onClick={() => navigate('/smart-body-calculator')}
           >
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-                  <TrendingUp className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                  <Activity className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">BMI Calculator</h3>
-                  <p className="text-sm text-muted-foreground">Calculate your Body Mass Index</p>
+                  <h3 className="font-bold text-lg">Smart AI Body Calculator</h3>
+                  <p className="text-sm text-muted-foreground">AI-powered BMI & calorie estimator</p>
                 </div>
               </div>
             </CardContent>

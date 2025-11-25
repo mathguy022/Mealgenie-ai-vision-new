@@ -37,6 +37,10 @@ const FoodScannerLive = () => {
     apiKey: geminiApiKey,
     onError: (err) => {
       console.error('Gemini analysis error:', err);
+      if (/Video is not playing|Video is not ready/i.test(err.message || '')) {
+        if (cameraActive) stopCamera();
+        return; // suppress repeated toasts when camera is stopped
+      }
       toast({
         title: 'Analysis Error',
         description: err.message || 'Failed to analyze food. Please try again.',
@@ -107,6 +111,19 @@ const FoodScannerLive = () => {
             });
           }
         };
+
+        const onVideoStop = () => {
+          console.log('Video paused or ended, stopping streaming');
+          stopStreaming();
+          setCameraActive(false);
+          setCameraError('Video is not playing');
+          // Do not show a toast if we already captured results
+          if (!finalAnalysis) {
+            toast({ title: 'Analysis Error', description: 'Video is not playing', variant: 'destructive' });
+          }
+        };
+        videoRef.current.addEventListener('pause', onVideoStop);
+        videoRef.current.addEventListener('ended', onVideoStop);
       }
 
       setStream(mediaStream);
@@ -144,6 +161,13 @@ const FoodScannerLive = () => {
       });
     }
   };
+
+  useEffect(() => {
+    if (!cameraActive) {
+      // Ensure streaming stops if camera becomes inactive
+      stopStreaming();
+    }
+  }, [cameraActive, stopStreaming]);
 
   const switchCamera = async () => {
     console.log('Switching camera');
@@ -202,6 +226,7 @@ const FoodScannerLive = () => {
     console.log('Captured analysis:', analysis);
     if (analysis) {
       setFinalAnalysis(analysis);
+      stopCamera();
       toast({
         title: 'Analysis Captured',
         description: 'Your meal analysis has been saved',
@@ -214,6 +239,12 @@ const FoodScannerLive = () => {
       });
     }
   };
+
+  useEffect(() => {
+    if (finalAnalysis) {
+      stopCamera();
+    }
+  }, [finalAnalysis]);
 
   const handleSaveAndClose = () => {
     // In a real app, this would save the analysis to a database

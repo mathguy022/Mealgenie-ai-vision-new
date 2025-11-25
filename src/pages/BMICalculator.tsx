@@ -50,6 +50,8 @@ export default function BMICalculator() {
   const [kilograms, setKilograms] = useState<string>('');
 
   const [result, setResult] = useState<BmiResult>(null);
+  const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [age, setAge] = useState<string>('');
 
   const handleCalculate = () => {
     let bmi = 0;
@@ -111,6 +113,22 @@ export default function BMICalculator() {
               <CardDescription>Standard (Imperial) or Metric units</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="radio" checked={gender==='male'} onChange={()=>setGender('male')} />
+                    <span>Male</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="radio" checked={gender==='female'} onChange={()=>setGender('female')} />
+                    <span>Female</span>
+                  </label>
+                </div>
+                <div className="flex-1 max-w-xs">
+                  <Label htmlFor="age">Age (optional)</Label>
+                  <Input id="age" inputMode="numeric" value={age} onChange={(e)=>setAge(e.target.value)} placeholder="years" />
+                </div>
+              </div>
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'standard' | 'metric')}>
                 <TabsList className="w-full">
                   <TabsTrigger value="standard" className="flex-1">Standard</TabsTrigger>
